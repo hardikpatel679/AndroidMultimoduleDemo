@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "username": "mock_user",
+  "email": "mock@example.com",
+  "firstName": "Mock",
+  "lastName": "User",
+  "gender": "male",
+  "image": "https://dummyjson.com/icon/emilys/128",
+  "accessToken": "mock_token"
+}

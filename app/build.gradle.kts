@@ -1,0 +1,99 @@
+import com.android.build.api.dsl.ApplicationExtension
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt)
+}
+
+configure<ApplicationExtension> {
+    namespace = "com.hdapp.androidmultimodule"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "com.hdapp.androidmultimodule"
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            buildConfigField("String", "BASE_URL", "\"https://dummyjson.com/\"")
+        }
+        create("uat") {
+            dimension = "environment"
+            applicationIdSuffix = ".uat"
+            buildConfigField("String", "BASE_URL", "\"https://dummyjson.com/\"")
+        }
+        create("mock") {
+            dimension = "environment"
+            applicationIdSuffix = ".mock"
+            buildConfigField("String", "BASE_URL", "\"https://dummyjson.com/\"")
+        }
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "BASE_URL", "\"https://dummyjson.com/\"")
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+}
+
+dependencies {
+    implementation(project(":domain"))
+    implementation(project(":data"))
+    implementation(project(":feature:login"))
+    implementation(project(":core:ui"))
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.logging)
+    implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
+    testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.kotlinx.serialization.json)
+}
