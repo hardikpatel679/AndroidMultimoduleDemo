@@ -13,6 +13,8 @@ import com.hdapp.domain.navigation.Screen
 import com.hdapp.feature.login.mvi.LoginViewModel
 import com.hdapp.feature.login.ui.DashboardScreen
 import com.hdapp.feature.login.ui.LoginScreen
+import com.hdapp.feature.login.ui.SettingsScreen
+import com.hdapp.core.ui.theme.SettingsViewModel
 
 @Composable
 fun AppNavGraph() {
@@ -38,7 +40,21 @@ fun AppNavGraph() {
                         }
                         is Screen.Dashboard -> {
                             NavEntry(screen) {
-                                DashboardScreen(username = screen.username)
+                                DashboardScreen(
+                                    username = screen.username,
+                                    onNavigateToSettings = {
+                                        backStack.add(Screen.Settings)
+                                    }
+                                )
+                            }
+                        }
+                        is Screen.Settings -> {
+                            NavEntry(screen) {
+                                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                                SettingsScreen(
+                                    viewModel = settingsViewModel,
+                                    onBack = { backStack.removeAt(backStack.size - 1) }
+                                )
                             }
                         }
                     }

@@ -1,0 +1,28 @@
+<resources>
+    <string name="login_welcome_back">مرحباً بك مجدداً</string>
+    <string name="login_to_your_account">تسجيل الدخول إلى حسابك</string>
+    <string name="login_username">اسم المستخدم</string>
+    <string name="login_password">كلمة المرور</string>
+    <string name="login_forgot_password">هل نسيت كلمة المرور؟</string>
+    <string name="login_button">تسجيل الدخول</string>
+    <string name="login_or_continue_with">أو الاستمرار باستخدام</string>
+    <string name="login_google">جوجل</string>
+    <string name="login_apple">أبل</string>
+    <string name="login_dont_have_account">ليس لديك حساب؟</string>
+    <string name="login_sign_up">إنشاء حساب</string>
+    <string name="login_show_password">إظهار كلمة المرور</string>
+    <string name="login_hide_password">إخفاء كلمة المرور</string>
+    <string name="login_error_title">خطأ في تسجيل الدخول</string>
+    <string name="login_ok">حسناً</string>
+    <string name="dashboard_title">لوحة القيادة</string>
+    <string name="dashboard_welcome">مرحباً بك في لوحة القيادة</string>
+    <string name="dashboard_hello">مرحباً، %1$s!</string>
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_theme">السمة</string>
+    <string name="settings_theme_light">فاتح</string>
+    <string name="settings_theme_dark">داكن</string>
+    <string name="settings_theme_system">تلقائي</string>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_language_english">الإنجليزية</string>
+    <string name="settings_language_arabic">العربية</string>
+</resources>

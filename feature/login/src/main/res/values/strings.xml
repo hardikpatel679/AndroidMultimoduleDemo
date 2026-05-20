@@ -14,8 +14,19 @@
     <string name="login_hide_password">Hide password</string>
     <string name="login_error_title">Login Error</string>
     <string name="login_ok">OK</string>
-    <string name="error_network">No internet connection. Please check your network and try again.</string>
-    <string name="error_server">Something went wrong on our end. Please try again later.</string>
-    <string name="error_unauthorized">Invalid username or password. Please try again.</string>
-    <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_welcome">Welcome to Dashboard</string>
+    <string name="dashboard_hello">Hello, %1$s!</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_arabic">Arabic</string>
+    <string name="error_network" translatable="false">No internet connection. Please check your network and try again.</string>
+    <string name="error_server" translatable="false">Something went wrong on our end. Please try again later.</string>
+    <string name="error_unauthorized" translatable="false">Invalid username or password. Please try again.</string>
+    <string name="error_unknown" translatable="false">An unexpected error occurred. Please try again.</string>
 </resources>

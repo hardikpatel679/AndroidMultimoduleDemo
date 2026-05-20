@@ -30,7 +30,15 @@ The project follows **Clean Architecture** with **MVI (Model-View-Intent)** to e
 - **MVI Pattern**: Predictable state management via Uni-directional Data Flow.
 - **Sophisticated Mocking**: `MockInterceptor` serves JSON assets in `mock` flavor.
 - **Modular Setup**: Clean separation of concerns for fast builds and KMP readiness.
+- **Dynamic Localization**: Support for English and Arabic with a localized context strategy.
+- **RTL Support**: Automatic UI mirroring for Right-to-Left languages using Jetpack Compose's `LocalLayoutDirection`.
 - **Comprehensive Testing**: 80%+ coverage on business logic and UI flow verification.
+
+## 🌍 Localization & RTL Support
+The project implements a custom dynamic localization strategy that goes beyond simple resource files:
+- **Localized Context**: In `MainActivity`, we create a `ConfigurationContext` to apply language changes without requiring a full activity restart.
+- **Hilt Compatibility**: Uses a `ContextWrapper` strategy to ensure Hilt's `ViewModelFactory` can still find the `Activity` context even when a localized context is provided.
+- **Compose Layout Direction**: `AppTheme` explicitly manages `LocalLayoutDirection` to ensure RTL languages like Arabic mirror the UI correctly (swapping start/end paddings, icons, and layout orientation).
 
 ## ⚙️ Getting Started
 1. **Build Variant**: Select `mockDebug` to run with local data.

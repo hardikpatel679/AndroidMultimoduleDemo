@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">تطبيق إتش دي</string>
+    <string name="dashboard_title">لوحة القيادة</string>
+    <string name="settings_title">الإعدادات</string>
+</resources>

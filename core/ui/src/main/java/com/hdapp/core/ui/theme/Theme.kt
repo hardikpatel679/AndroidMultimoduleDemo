@@ -10,6 +10,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.runtime.staticCompositionLocalOf
+
+val LocalAppLanguage = staticCompositionLocalOf { AppLanguageConfig.ENGLISH }
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -28,6 +33,7 @@ fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     dimens: Dimens = Dimens(),
+    language: AppLanguageConfig = AppLanguageConfig.ENGLISH,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -39,8 +45,16 @@ fun AppTheme(
         else -> LightColorScheme
     }
 
+    val layoutDirection = if (language == AppLanguageConfig.ARABIC) {
+        LayoutDirection.Rtl
+    } else {
+        LayoutDirection.Ltr
+    }
+
     CompositionLocalProvider(
-        LocalDimens provides dimens
+        LocalDimens provides dimens,
+        LocalAppLanguage provides language,
+        LocalLayoutDirection provides layoutDirection
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
