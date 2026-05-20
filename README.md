@@ -3,11 +3,19 @@
 A professional-grade Android demo showcasing **Modern Android Development (MAD)** with a focus on scalability, testability, and MVI.
 
 ## 🏗 Architecture & Modules
-- **`:app`**: Navigation (Nav3) & DI (Hilt) setup.
-- **`:feature:login`**: MVI-based UI with Jetpack Compose.
-- **`:domain`**: Pure Kotlin business logic & repository abstractions.
-- **`:data`**: Networking (Retrofit/OkHttp) & Mocking system.
-- **`:core:ui`**: Centralized Design System (Theme, Dimens, Components).
+The project follows **Clean Architecture** with **MVI (Model-View-Intent)** to ensure a scalable, testable, and maintainable codebase.
+
+### Why this Architecture?
+- **Separation of Concerns**: Decouples business logic from UI and data sources.
+- **Testability**: Pure Kotlin logic in `domain` is easily unit-tested without Android dependencies.
+- **Predictability**: MVI ensures a single source of truth for UI state, reducing side-effect bugs.
+- **Build Efficiency**: Modularization allows for parallel compilation and independent feature development.
+
+### How it's implemented:
+- **Presentation (MVI)**: Located in `:feature:login`. Uses `ViewState` to represent UI, `Intent` for user actions, and `Effect` for one-time events (e.g., navigation).
+- **Domain**: Located in `:domain`. Contains pure Kotlin **UseCases** and **Repository Interfaces**. It has no knowledge of the UI or Data layers.
+- **Data**: Located in `:data`. Implements repository interfaces, handles API calls via Retrofit, and manages the mocking system.
+- **Core UI**: Located in `:core:ui`. Centralizes the design system to ensure UI consistency across all feature modules.
 
 ## 🚀 Tech Stack
 - **UI**: Jetpack Compose (Material 3)
