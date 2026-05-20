@@ -1,5 +1,8 @@
 # Android Multi-Module Clean Architecture
 
+<center><img width="25%" height="25%" alt="Screenshot_20260520_140024" src="https://github.com/user-attachments/assets/82d8f686-98ff-4936-b44d-de14c8096dea" /></center>
+
+
 A professional-grade Android demo showcasing **Modern Android Development (MAD)** with a focus on scalability, testability, and MVI.
 
 ## 🏗 Architecture & Modules
