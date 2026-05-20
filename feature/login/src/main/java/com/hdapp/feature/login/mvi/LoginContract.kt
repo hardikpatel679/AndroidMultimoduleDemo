@@ -12,8 +12,8 @@ sealed class LoginIntent {
 }
 
 data class LoginState(
-    val username: String = "emilys",
-    val password: String = "emilyspass",
+    val username: String = "",
+    val password: String = "",
     val isPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val error: UiText? = null,

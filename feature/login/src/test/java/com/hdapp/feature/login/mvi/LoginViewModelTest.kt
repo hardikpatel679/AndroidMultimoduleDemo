@@ -39,8 +39,8 @@ class LoginViewModelTest {
     @Test
     fun `initial state is correct`() = runTest {
         val state = viewModel.state.value
-        assertThat(state.username).isEqualTo("emilys")
-        assertThat(state.password).isEqualTo("emilyspass")
+        assertThat(state.username).isEmpty()
+        assertThat(state.password).isEmpty()
         assertThat(state.isLoading).isFalse()
         assertThat(state.error).isNull()
     }
@@ -64,12 +64,15 @@ class LoginViewModelTest {
             token = "mock_token",
             refreshToken = ""
         )
-        coEvery { loginUseCase("emilys", "emilyspass") } returns Result.success(user)
+        coEvery { loginUseCase("newuser", "newpass") } returns Result.success(user)
+
+        viewModel.onIntent(LoginIntent.UsernameChanged("newuser"))
+        viewModel.onIntent(LoginIntent.PasswordChanged("newpass"))
 
         viewModel.state.test {
             viewModel.onIntent(LoginIntent.LoginClicked)
             
-            assertThat(awaitItem().username).isEqualTo("emilys")
+            assertThat(awaitItem().username).isEqualTo("newuser")
             assertThat(awaitItem().isLoading).isTrue()
             
             val successState = awaitItem()
@@ -85,12 +88,15 @@ class LoginViewModelTest {
 
     @Test
     fun `LoginClicked failure updates state with error`() = runTest {
-        coEvery { loginUseCase("emilys", "emilyspass") } returns Result.failure(AppError.Unauthorized)
+        coEvery { loginUseCase("newuser", "newpass") } returns Result.failure(AppError.Unauthorized)
+
+        viewModel.onIntent(LoginIntent.UsernameChanged("newuser"))
+        viewModel.onIntent(LoginIntent.PasswordChanged("newpass"))
 
         viewModel.state.test {
             viewModel.onIntent(LoginIntent.LoginClicked)
             
-            awaitItem() // Initial
+            awaitItem() // Initial state after updates
             val loadingState = awaitItem()
             assertThat(loadingState.isLoading).isTrue()
 

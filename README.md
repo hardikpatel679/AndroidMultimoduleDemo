@@ -1,50 +1,62 @@
-# Android Multi-Module Clean Architecture Demo
+# Android Multi-Module Clean Architecture & KMP-Ready Demo
 
-This project demonstrates a modern Android application architecture using Jetpack Compose, Navigation 3, Hilt, Retrofit, and MVI (Model-View-Intent).
+This repository showcases a professional-grade Android application built with **Modern Android Development (MAD)** practices. It demonstrates a scalable, testable, and maintainable codebase using **Clean Architecture**, **MVI**, and a **Multi-Module** Gradle setup designed with Kotlin Multiplatform (KMP) in mind.
 
-## 🏗 Architecture
-The project follows **Clean Architecture** principles across multiple modules:
-- `:app`: The composition root. Handles navigation wiring and DI setup.
-- `:feature:login`: Login screen implementation following the MVI pattern.
-- `:data`: Data layer implementing repositories and remote/local data sources.
-- `:domain`: Business logic, use cases, and repository interfaces.
-- `:core:ui`: Common UI components, themes, and design system.
+## 🛠 Technical Highlights
 
-## 🚀 Key Technologies
-- **Jetpack Compose**: UI framework.
-- **Navigation 3**: Latest Compose-centric navigation (v1.1.2).
-- **Hilt**: Dependency injection.
-- **Retrofit & OkHttp**: Networking.
-- **Kotlinx Serialization**: JSON parsing.
-- **MVI (Model-View-Intent)**: State management for feature modules.
+### 🏗 Architecture & Modularity
+The project is architected to separate concerns and minimize build times:
+- **`:app`**: The application entry point, UI host, and DI container.
+- **`:feature:login`**: A feature module implementing a robust **MVI (Model-View-Intent)** pattern for predictable state management.
+- **`:domain`**: A pure Kotlin module containing business logic, entities, and repository abstractions (ready for KMP).
+- **`:data`**: Handles data persistence and networking, implementing repository interfaces from the domain layer.
+- **`:core:ui`**: A dedicated design system module containing reusable Compose components and themes (`AppTheme`).
 
-## 🎨 Product Flavors
-The app supports four environment flavors:
-1. `dev`: Development environment.
-2. `uat`: User Acceptance Testing.
-3. `mock`: Local testing with hardcoded JSON responses.
-4. `prod`: Production environment.
+### 🚀 Cutting-Edge Stack
+- **Jetpack Compose**: 100% declarative UI with a custom design system.
+- **Navigation 3**: Implementation of the latest Compose-first navigation library.
+- **Hilt (Dagger)**: Advanced dependency injection with custom scopes and constructor injection.
+- **Retrofit 3 & OkHttp 5**: Robust networking layer with interceptors for logging and mocking.
+- **Kotlin Coroutines & Flow**: Asynchronous programming and reactive data streams.
+- **MVI Architecture**: Uni-directional data flow (UDF) for consistent UI state.
 
-All environments currently target `https://dummyjson.com/` as the base URL.
+### 🧪 Quality & Testing
+A heavy focus on reliability through multiple testing layers:
+- **Unit Testing**: Testing ViewModels and UseCases using `MockK`, `Turbine` (for Flow), and `Truth`.
+- **Instrumented Testing**: UI testing with `ComposeTestRule` and `MockK-Android`.
+- **Mocking System**: A sophisticated `MockInterceptor` system that allows the app to run in a `mock` flavor, serving local JSON assets for rapid development without a backend.
 
-## 🧪 Mocking System
-The project includes a centralized mocking system for the `mock` flavor:
-- **`MockRegistry`**: A central registry in the `:data` module where API endpoints are mapped to JSON assets.
-- **`MockInterceptor`**: An OkHttp interceptor that serves local JSON files from the `assets/mocks/` folder instead of making real network calls.
-- **JSON Assets**: Located at `data/src/mock/assets/mocks/`.
+### 🎨 Design System & UI
+- **Custom Design System**: Centralized `Dimens`, `Color`, and `Typography` in `:core:ui`.
+- **Component-Driven Development**: Reusable UI atoms like `AppButton` and `AppTextField`.
+- **Dark Mode Support**: Dynamic theme switching with Material 3 support.
 
-### Adding a new Mock
-1. Add a JSON file to `data/src/mock/assets/mocks/`.
-2. Define the path constant in `Endpoints.kt`.
-3. Register the endpoint in `MockResponse.kt` inside `MockRegistry`.
+## ⚙️ Advanced Gradle Setup
+- **Version Catalog**: Centralized dependency management via `libs.versions.toml`.
+- **Product Flavors**: Multi-environment support (`dev`, `uat`, `mock`, `prod`) configured at the library level.
+- **Packaging Rules**: Optimized build process with custom resource packaging to resolve library conflicts.
 
-## 🛠 Getting Started
-1. Clone the repository.
-2. Select the desired Build Variant (e.g., `mockDebug`).
-3. Build and run the app.
+## 🚀 Getting Started
+
+### Build Variants
+The project uses flavor dimensions to manage environments. Select your variant in Android Studio:
+- `mockDebug`: Recommended for development (uses local mock data).
+- `devDebug`: Connects to the development API.
 
 ### Running Tests
-To run unit tests for a specific flavor (e.g., login feature in mock flavor):
+Execute tests via CLI:
 ```bash
+# Unit Tests
 ./gradlew :feature:login:testMockDebugUnitTest
+
+# Instrumented UI Tests
+./gradlew :feature:login:connectedMockDebugAndroidTest
 ```
+
+## 👨‍💻 Key Skills Demonstrated
+- **Clean Architecture** & SOLID Principles.
+- **Multi-Module Project Structure**.
+- **Modern UI with Jetpack Compose**.
+- **Reactive Programming** with Flow/Coroutines.
+- **Automated Testing** (Unit & UI).
+- **Advanced Gradle & Version Catalog** configuration.
