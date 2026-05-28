@@ -17,6 +17,7 @@ hilt = "2.59.2"
 navigation3 = "1.1.2"
 ksp = "2.3.8"
 javaxInject = "1"
+datastore = "1.1.2"
 
 [libraries]
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
@@ -47,6 +48,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 mockk = { group = "io.mockk", name = "mockk", version = "1.13.17" }
 mockk-android = { group = "io.mockk", name = "mockk-android", version = "1.14.9" }

@@ -11,8 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import com.hdapp.core.ui.theme.LocalDimens
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.hdapp.core.ui.theme.AppTheme
+import com.hdapp.core.ui.theme.LocalDimens
 import com.hdapp.feature.login.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,5 +55,16 @@ fun DashboardScreen(
                 modifier = Modifier.padding(top = dimens.small)
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DashboardScreenPreview() {
+    AppTheme {
+        DashboardScreen(
+            username = "John Doe",
+            onNavigateToSettings = {}
+        )
     }
 }

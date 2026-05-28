@@ -3,6 +3,8 @@ import com.android.build.api.dsl.LibraryExtension
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.hilt)
 }
 
 configure<LibraryExtension> {
@@ -35,6 +37,7 @@ configure<LibraryExtension> {
 }
 
 dependencies {
+    implementation(project(":domain"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -46,4 +49,5 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.material3)
+    ksp(libs.hilt.compiler)
 }

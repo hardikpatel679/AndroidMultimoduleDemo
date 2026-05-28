@@ -1,5 +1,6 @@
 package com.hdapp.feature.login.mvi
 
+import androidx.compose.runtime.Immutable
 import com.hdapp.core.ui.util.UiText
 import com.hdapp.domain.model.User
 
@@ -11,6 +12,7 @@ sealed class LoginIntent {
     object ClearError : LoginIntent()
 }
 
+@Immutable
 data class LoginState(
     val username: String = "",
     val password: String = "",

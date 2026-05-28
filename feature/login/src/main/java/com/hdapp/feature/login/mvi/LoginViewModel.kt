@@ -32,27 +32,45 @@ class LoginViewModel @Inject constructor(
             is LoginIntent.PasswordChanged -> _state.update { it.copy(password = intent.password) }
             LoginIntent.TogglePasswordVisibility -> _state.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
             LoginIntent.LoginClicked -> handleLogin()
-            LoginIntent.ClearError -> _state.update { it.copy(error = null) }
+            LoginIntent.ClearError -> {
+                if (_state.value.error != null) {
+                    _state.update { it.copy(error = null) }
+                }
+            }
         }
     }
 
     private fun handleLogin() {
+        val currentState = _state.value
+        if (currentState.isLoading) return
+
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            val result = loginUseCase(_state.value.username, _state.value.password)
-            result.onSuccess { user ->
-                _state.update { it.copy(isLoading = false, user = user) }
-                _effect.emit(LoginEffect.NavigateToDashboard)
-            }.onFailure { throwable ->
-                val error = when (throwable) {
-                    is AppError.NetworkError -> UiText.StringResource(R.string.error_network)
-                    is AppError.ServerError -> UiText.StringResource(R.string.error_server)
-                    is AppError.Unauthorized -> UiText.StringResource(R.string.error_unauthorized)
-                    is AppError.BusinessError -> UiText.DynamicString(throwable.message)
-                    else -> UiText.StringResource(R.string.error_unknown)
+            
+            loginUseCase(currentState.username, currentState.password)
+                .onSuccess { user ->
+                    _state.update { it.copy(isLoading = false, user = user) }
+                    _effect.emit(LoginEffect.NavigateToDashboard)
                 }
-                _state.update { it.copy(isLoading = false, error = error) }
+                .onFailure { throwable ->
+                    _state.update { it.copy(isLoading = false, error = mapErrorToUiText(throwable)) }
+                }
+        }
+    }
+
+    private fun mapErrorToUiText(throwable: Throwable): UiText {
+        return when (throwable) {
+            is AppError.NetworkError -> UiText.StringResource(R.string.error_network)
+            is AppError.ServerError -> UiText.StringResource(R.string.error_server)
+            is AppError.Unauthorized -> UiText.StringResource(R.string.error_unauthorized)
+            is AppError.BusinessError -> {
+                if (throwable.code == "VALIDATION_ERROR") {
+                    UiText.StringResource(R.string.error_empty_fields)
+                } else {
+                    UiText.DynamicString(throwable.message)
+                }
             }
+            else -> UiText.StringResource(R.string.error_unknown)
         }
     }
 }

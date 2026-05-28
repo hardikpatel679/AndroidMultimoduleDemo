@@ -6,6 +6,7 @@ import com.hdapp.domain.model.AppError
 import com.hdapp.domain.model.User
 import com.hdapp.domain.usecase.LoginUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,6 +53,33 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun `PasswordChanged intent updates state`() = runTest {
+        viewModel.onIntent(LoginIntent.PasswordChanged("newpassword"))
+        assertThat(viewModel.state.value.password).isEqualTo("newpassword")
+    }
+
+    @Test
+    fun `TogglePasswordVisibility intent updates state`() = runTest {
+        assertThat(viewModel.state.value.isPasswordVisible).isFalse()
+        viewModel.onIntent(LoginIntent.TogglePasswordVisibility)
+        assertThat(viewModel.state.value.isPasswordVisible).isTrue()
+        viewModel.onIntent(LoginIntent.TogglePasswordVisibility)
+        assertThat(viewModel.state.value.isPasswordVisible).isFalse()
+    }
+
+    @Test
+    fun `ClearError intent clears error in state`() = runTest {
+        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.Unauthorized)
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceUntilIdle()
+        
+        assertThat(viewModel.state.value.error).isNotNull()
+        
+        viewModel.onIntent(LoginIntent.ClearError)
+        assertThat(viewModel.state.value.error).isNull()
+    }
+
+    @Test
     fun `LoginClicked success updates state and emits effect`() = runTest {
         val user = User(
             id = 1,
@@ -70,9 +98,9 @@ class LoginViewModelTest {
         viewModel.onIntent(LoginIntent.PasswordChanged("newpass"))
 
         viewModel.state.test {
+            awaitItem() // Initial after UsernameChanged/PasswordChanged updates
             viewModel.onIntent(LoginIntent.LoginClicked)
             
-            assertThat(awaitItem().username).isEqualTo("newuser")
             assertThat(awaitItem().isLoading).isTrue()
             
             val successState = awaitItem()
@@ -94,15 +122,32 @@ class LoginViewModelTest {
         viewModel.onIntent(LoginIntent.PasswordChanged("newpass"))
 
         viewModel.state.test {
+            awaitItem() // current
             viewModel.onIntent(LoginIntent.LoginClicked)
             
-            awaitItem() // Initial state after updates
-            val loadingState = awaitItem()
-            assertThat(loadingState.isLoading).isTrue()
+            assertThat(awaitItem().isLoading).isTrue()
 
             val errorState = awaitItem()
             assertThat(errorState.isLoading).isFalse()
             assertThat(errorState.error).isNotNull()
         }
+    }
+
+    @Test
+    fun `LoginClicked does nothing if already loading`() = runTest {
+        coEvery { loginUseCase(any(), any()) } coAnswers {
+            kotlinx.coroutines.delay(1000)
+            Result.success(mockk())
+        }
+
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceTimeBy(100)
+        assertThat(viewModel.state.value.isLoading).isTrue()
+
+        // Second click
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        
+        // Verify use case was only called once
+        coVerify(exactly = 1) { loginUseCase(any(), any()) }
     }
 }
