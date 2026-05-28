@@ -29,4 +29,5 @@
     <string name="error_server" translatable="false">Something went wrong on our end. Please try again later.</string>
     <string name="error_unauthorized" translatable="false">Invalid username or password. Please try again.</string>
     <string name="error_unknown" translatable="false">An unexpected error occurred. Please try again.</string>
+    <string name="error_empty_fields">Username and password cannot be empty</string>
 </resources>

@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import com.hdapp.domain.model.AppLanguageConfig
 import androidx.compose.runtime.staticCompositionLocalOf
 
 val LocalAppLanguage = staticCompositionLocalOf { AppLanguageConfig.ENGLISH }

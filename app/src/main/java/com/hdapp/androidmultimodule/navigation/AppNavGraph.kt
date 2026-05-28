@@ -1,10 +1,6 @@
 package com.hdapp.androidmultimodule.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -20,46 +16,46 @@ import com.hdapp.core.ui.theme.SettingsViewModel
 fun AppNavGraph() {
     val backStack = rememberNavBackStack(Screen.Login)
 
-    Scaffold(modifier = Modifier) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            NavDisplay(
-                backStack = backStack,
-                onBack = { backStack.removeAt(backStack.size - 1) },
-                entryProvider = { key ->
-                    when (val screen = key as Screen) {
-                        is Screen.Login -> {
-                            NavEntry(screen) {
-                                val loginViewModel: LoginViewModel = hiltViewModel()
-                                LoginScreen(
-                                    viewModel = loginViewModel,
-                                    onNavigateToDashboard = { username ->
-                                        backStack.add(Screen.Dashboard(username))
-                                    }
-                                )
+    NavDisplay(
+        backStack = backStack,
+        onBack = { 
+            if (backStack.size > 1) {
+                backStack.removeAt(backStack.size - 1) 
+            }
+        },
+        entryProvider = { key ->
+            when (val screen = key as Screen) {
+                is Screen.Login -> {
+                    NavEntry(screen) {
+                        val loginViewModel: LoginViewModel = hiltViewModel()
+                        LoginScreen(
+                            viewModel = loginViewModel,
+                            onNavigateToDashboard = { username ->
+                                backStack.add(Screen.Dashboard(username))
                             }
-                        }
-                        is Screen.Dashboard -> {
-                            NavEntry(screen) {
-                                DashboardScreen(
-                                    username = screen.username,
-                                    onNavigateToSettings = {
-                                        backStack.add(Screen.Settings)
-                                    }
-                                )
-                            }
-                        }
-                        is Screen.Settings -> {
-                            NavEntry(screen) {
-                                val settingsViewModel: SettingsViewModel = hiltViewModel()
-                                SettingsScreen(
-                                    viewModel = settingsViewModel,
-                                    onBack = { backStack.removeAt(backStack.size - 1) }
-                                )
-                            }
-                        }
+                        )
                     }
                 }
-            )
+                is Screen.Dashboard -> {
+                    NavEntry(screen) {
+                        DashboardScreen(
+                            username = screen.username,
+                            onNavigateToSettings = {
+                                backStack.add(Screen.Settings)
+                            }
+                        )
+                    }
+                }
+                is Screen.Settings -> {
+                    NavEntry(screen) {
+                        val settingsViewModel: SettingsViewModel = hiltViewModel()
+                        SettingsScreen(
+                            viewModel = settingsViewModel,
+                            onBack = { backStack.removeAt(backStack.size - 1) }
+                        )
+                    }
+                }
+            }
         }
-    }
+    )
 }

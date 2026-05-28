@@ -1,13 +1,10 @@
 package com.hdapp.core.ui.theme
 
-enum class AppThemeConfig {
-    DARK, LIGHT, SYSTEM
-}
+import androidx.compose.runtime.Immutable
+import com.hdapp.domain.model.AppLanguageConfig
+import com.hdapp.domain.model.AppThemeConfig
 
-enum class AppLanguageConfig {
-    ENGLISH, ARABIC
-}
-
+@Immutable
 data class SettingsState(
     val theme: AppThemeConfig = AppThemeConfig.SYSTEM,
     val language: AppLanguageConfig = AppLanguageConfig.ENGLISH

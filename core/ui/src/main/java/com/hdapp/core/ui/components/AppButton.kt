@@ -12,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import com.hdapp.core.ui.theme.AppTheme
 import com.hdapp.core.ui.theme.LocalDimens
 
 @Composable
@@ -65,5 +67,29 @@ fun AppOutlinedButton(
             text = text,
             style = MaterialTheme.typography.titleMedium
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppButtonPreview() {
+    AppTheme {
+        AppButton(text = "Primary Button", onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppButtonLoadingPreview() {
+    AppTheme {
+        AppButton(text = "Primary Button", onClick = {}, isLoading = true)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppOutlinedButtonPreview() {
+    AppTheme {
+        AppOutlinedButton(text = "Outlined Button", onClick = {})
     }
 }

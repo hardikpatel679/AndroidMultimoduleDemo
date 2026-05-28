@@ -8,6 +8,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
+import com.hdapp.core.ui.theme.AppTheme
 import com.hdapp.core.ui.theme.LocalDimens
 
 @Composable
@@ -35,4 +37,28 @@ fun AppTextField(
         isError = isError,
         singleLine = singleLine
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppTextFieldPreview() {
+    AppTheme {
+        AppTextField(
+            value = "",
+            onValueChange = {},
+            label = "Username"
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppTextFieldValuePreview() {
+    AppTheme {
+        AppTextField(
+            value = "John Doe",
+            onValueChange = {},
+            label = "Username"
+        )
+    }
 }

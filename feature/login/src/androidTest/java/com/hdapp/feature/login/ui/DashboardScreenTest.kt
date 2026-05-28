@@ -16,7 +16,10 @@ class DashboardScreenTest {
         val username = "emilys"
         composeTestRule.setContent {
             AppTheme {
-                DashboardScreen(username = username)
+                DashboardScreen(
+                    username = username,
+                    onNavigateToSettings = {}
+                )
             }
         }
 
