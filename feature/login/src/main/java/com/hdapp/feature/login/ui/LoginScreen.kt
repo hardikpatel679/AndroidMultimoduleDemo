@@ -194,7 +194,7 @@ private fun LoginActions(
     dimens: com.hdapp.core.ui.theme.Dimens
 ) {
     TextButton(
-        onClick = { /* TODO */ },
+        onClick = { },
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(0.dp)
     ) {
@@ -239,12 +239,12 @@ private fun LoginSocialSection(dimens: com.hdapp.core.ui.theme.Dimens) {
     ) {
         AppOutlinedButton(
             text = stringResource(R.string.login_google),
-            onClick = { /* TODO */ },
+            onClick = { },
             modifier = Modifier.weight(1f).padding(end = dimens.small)
         )
         AppOutlinedButton(
             text = stringResource(R.string.login_apple),
-            onClick = { /* TODO */ },
+            onClick = { },
             modifier = Modifier.weight(1f).padding(start = dimens.small)
         )
     }
@@ -258,7 +258,7 @@ private fun LoginFooter(dimens: com.hdapp.core.ui.theme.Dimens) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(stringResource(R.string.login_dont_have_account))
-        TextButton(onClick = { /* TODO */ }) {
+        TextButton(onClick = { }) {
             Text(
                 text = stringResource(R.string.login_sign_up),
                 fontWeight = FontWeight.Bold
