@@ -49,6 +49,7 @@ The project implements a custom dynamic localization strategy that goes beyond s
 - **Jetpack DataStore**: Used to store user preferences (Theme, Language) across app sessions.
 - **Clean Architecture Integration**: Repository interfaces in `:domain` ensure the UI doesn't depend on the DataStore implementation directly.
 
+
 ## ⚙️ Getting Started
 1. **Build Variant**: Select `mockDebug` to run with local data.
 2. **Tests**: `./gradlew test` (Unit) or `./gradlew connectedAndroidTest` (UI).
