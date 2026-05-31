@@ -1,7 +1,7 @@
 package com.hdapp.feature.login.ui
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.hdapp.core.ui.theme.AppTheme
 import com.hdapp.feature.login.mvi.LoginState
 import org.junit.Rule
@@ -25,7 +25,7 @@ class LoginScreenTest {
 
         composeTestRule.onNodeWithText("Username").assertIsDisplayed()
         composeTestRule.onNodeWithText("Password").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Login").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("LoginButton").assertIsDisplayed()
     }
 
     @Test
@@ -39,8 +39,7 @@ class LoginScreenTest {
             }
         }
 
-        // Check if button is disabled or loading indicator is shown
-        // Since AppButton handles loading, we can check for its specific behavior if we know it
-        composeTestRule.onNodeWithText("Login").assertIsNotEnabled()
+        // Check if button is disabled when loading
+        composeTestRule.onNodeWithTag("LoginButton").assertIsNotEnabled()
     }
 }

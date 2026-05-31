@@ -2,7 +2,6 @@ package com.hdapp.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.hdapp.domain.model.AppLanguageConfig
@@ -27,19 +26,25 @@ class SettingsRepositoryImplTest {
 
     @Test
     fun `getTheme returns default when no value saved`() = runTest {
-        coEvery { dataStore.data } returns flowOf(mockk(relaxed = true))
+        val preferences = mockk<Preferences>()
+        coEvery { preferences[any<Preferences.Key<*>>()] } returns null
+        coEvery { dataStore.data } returns flowOf(preferences)
         
         repository.getTheme().test {
             assertThat(awaitItem()).isEqualTo(AppThemeConfig.SYSTEM)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
     fun `getLanguage returns default when no value saved`() = runTest {
-        coEvery { dataStore.data } returns flowOf(mockk(relaxed = true))
+        val preferences = mockk<Preferences>()
+        coEvery { preferences[any<Preferences.Key<*>>()] } returns null
+        coEvery { dataStore.data } returns flowOf(preferences)
 
         repository.getLanguage().test {
             assertThat(awaitItem()).isEqualTo(AppLanguageConfig.ENGLISH)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 }
