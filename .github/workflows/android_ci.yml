@@ -8,7 +8,6 @@ on:
 
 jobs:
   test_and_build:
-    # Use macOS for better emulator performance, or ubuntu-latest for cost efficiency
     runs-on: ubuntu-latest
 
     steps:
@@ -25,16 +24,16 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # 1. Static Analysis
     - name: Run Lint
       run: ./gradlew lintDevDebug
 
-    # 2. Run Unit Tests (All Modules)
     - name: Run Unit Tests
       run: ./gradlew testDevDebugUnitTest
 
-    # 3. Run UI Tests (Instrumentation Tests)
-    # Using an emulator runner to execute tests in the :feature:login and :app modules
+    # 3. Code Coverage Check (Threshold 90%)
+    - name: Check Code Coverage
+      run: ./gradlew jacocoCoverageVerification
+
     - name: Run UI Tests
       uses: reactivecircus/android-emulator-runner@v2
       with:
@@ -46,13 +45,17 @@ jobs:
         disable-animations: true
         script: ./gradlew connectedDevDebugAndroidTest
 
-    # 4. Build Release APK (Only if tests pass)
     - name: Build Prod Release APK
       run: ./gradlew :app:assembleProdRelease
 
-    # 5. Upload Artifacts
-    - name: Upload Release APK
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: app-prod-release
         path: app/build/outputs/apk/prod/release/*.apk
+
+    - name: Upload Coverage Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: build/reports/jacoco/jacocoFullReport/html/
