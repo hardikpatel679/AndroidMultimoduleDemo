@@ -7,29 +7,29 @@ on:
     branches: [ "main", "develop" ]
 
 jobs:
-  # Job to determine which flavors to run
+  # Job to determine which flavors to run on which OS
   setup:
     runs-on: ubuntu-latest
     outputs:
-      flavors: ${{ steps.set-flavors.outputs.flavors }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - id: set-flavors
+      - id: set-matrix
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # Run dev and prod flavors on main branch
-            echo "flavors=[\"dev\", \"prod\"]" >> $GITHUB_OUTPUT
+            # On main branch: dev on ubuntu, prod on macos
+            echo 'matrix=[{"flavor": "dev", "os": "ubuntu-latest"}, {"flavor": "prod", "os": "macos-latest"}]' >> $GITHUB_OUTPUT
           else
-            # Run only dev flavor on other branches
-            echo "flavors=[\"dev\"]" >> $GITHUB_OUTPUT
+            # On other branches: only dev on ubuntu
+            echo 'matrix=[{"flavor": "dev", "os": "ubuntu-latest"}]' >> $GITHUB_OUTPUT
           fi
 
   test_and_build:
     needs: setup
-    runs-on: macos-latest
+    runs-on: ${{ matrix.cfg.os }}
     strategy:
       fail-fast: false
       matrix:
-        flavor: ${{ fromJson(needs.setup.outputs.flavors) }}
+        cfg: ${{ fromJson(needs.setup.outputs.matrix) }}
 
     steps:
     - name: Checkout Code
@@ -45,39 +45,45 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Run Lint (${{ matrix.flavor }})
-      run: ./gradlew lint${{ matrix.flavor }}Debug
+    - name: Run Lint (${{ matrix.cfg.flavor }})
+      run: ./gradlew lint${{ matrix.cfg.flavor }}Debug
 
-    - name: Run Unit Tests (${{ matrix.flavor }})
-      run: ./gradlew test${{ matrix.flavor }}DebugUnitTest
+    - name: Run Unit Tests (${{ matrix.cfg.flavor }})
+      run: ./gradlew test${{ matrix.cfg.flavor }}DebugUnitTest
 
-    - name: Check Code Coverage (${{ matrix.flavor }})
+    - name: Check Code Coverage (${{ matrix.cfg.flavor }})
       run: ./gradlew jacocoCoverageVerification
 
-    - name: Run UI Tests (${{ matrix.flavor }})
+    - name: Run UI Tests (${{ matrix.cfg.flavor }})
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
         target: google_apis
-        arch: x86_64
-        force-avd-creation: false
-        emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 2048
+        arch: ${{ runner.os == 'macOS' && 'x86_64' || 'x86' }}
+        force-avd-creation: true
+        emulator-options: >-
+          -no-window
+          -no-snapshot
+          -noaudio
+          -no-boot-anim
+          -memory 2048
+          ${{ runner.os == 'macOS' && '-gpu host' || '-gpu swiftshader_indirect' }}
         disable-animations: true
-        script: ./gradlew connected${{ matrix.flavor }}DebugAndroidTest
+        script: adb devices && ./gradlew connected${{ matrix.cfg.flavor }}DebugAndroidTest
       env:
-        ADB_INSTALL_TIMEOUT: 10
+        ADB_INSTALL_TIMEOUT: 20
 
-    - name: Build APK (${{ matrix.flavor }})
-      run: ./gradlew :app:assemble${{ matrix.flavor }}Release
+    - name: Build APK (${{ matrix.cfg.flavor }})
+      run: ./gradlew :app:assemble${{ matrix.cfg.flavor }}Release
 
-    - name: Upload Artifacts (${{ matrix.flavor }})
+    - name: Upload Artifacts (${{ matrix.cfg.flavor }})
       uses: actions/upload-artifact@v4
       with:
-        name: app-${{ matrix.flavor }}-release
-        path: app/build/outputs/apk/${{ matrix.flavor }}/release/*.apk
+        name: app-${{ matrix.cfg.flavor }}-release
+        path: app/build/outputs/apk/${{ matrix.cfg.flavor }}/release/*.apk
 
-    - name: Upload Coverage Report (${{ matrix.flavor }})
+    - name: Upload Coverage Report (${{ matrix.cfg.flavor }})
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report-${{ matrix.flavor }}
+        name: coverage-report-${{ matrix.cfg.flavor }}
         path: build/reports/jacoco/jacocoFullReport/html/
