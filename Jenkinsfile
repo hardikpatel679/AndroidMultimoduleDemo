@@ -5,11 +5,26 @@ pipeline {
         // Path to your Android SDK
         ANDROID_HOME = "/Users/hardikp/Library/Android/sdk"
         PATH = "${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:${env.PATH}"
-        // Detection for Main branch
-        IS_MAIN_BRANCH = "${env.BRANCH_NAME == 'master'}"
     }
 
     stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    // Jenkins "Pipeline" jobs use GIT_BRANCH, "Multibranch" use BRANCH_NAME
+                    def fullBranch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: "unknown"
+                    // Strip "origin/" if present
+                    env.CURRENT_BRANCH = fullBranch.contains("/") ? fullBranch.split("/")[-1] : fullBranch
+                    
+                    // Determine if this is a main branch (master or main)
+                    env.IS_MAIN_BRANCH = (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main').toString()
+                    
+                    echo "Branch detected: ${env.CURRENT_BRANCH}"
+                    echo "Is Main Branch: ${env.IS_MAIN_BRANCH}"
+                }
+            }
+        }
+
         stage('Build') {
             steps {
                 echo "--- Compiling Application ---"
@@ -26,7 +41,7 @@ pipeline {
 
         stage('Unit Test and Code Coverage') {
             steps {
-                echo "--- Running Unit Tests & Verifying 80% Coverage ---"
+                echo "--- Running Unit Tests & Verifying Coverage ---"
                 script {
                     if (env.IS_MAIN_BRANCH == 'true') {
                         // Test both flavors on main
@@ -34,7 +49,7 @@ pipeline {
                     } else {
                         sh './gradlew testDevDebugUnitTest'
                     }
-                    // Run consolidated coverage verification (threshold 80% as configured in build.gradle.kts)
+                    // Run consolidated coverage verification (80% as configured in build.gradle.kts)
                     sh './gradlew jacocoCoverageVerification'
                 }
             }
@@ -60,7 +75,7 @@ pipeline {
                 expression { env.IS_MAIN_BRANCH == 'true' }
             }
             steps {
-                echo "--- Quality Gate Passed: Branch is ${env.BRANCH_NAME} ---"
+                echo "--- Quality Gate Passed: Branch is ${env.CURRENT_BRANCH} ---"
             }
         }
 
@@ -85,7 +100,7 @@ pipeline {
         success {
             // Save all final APKs as build artifacts
             archiveArtifacts artifacts: 'app/build/outputs/apk/**/*.apk', fingerprint: true
-            echo "CI/CD Pipeline Succeeded for ${env.BRANCH_NAME}"
+            echo "CI/CD Pipeline Succeeded for branch: ${env.CURRENT_BRANCH}"
         }
     }
 }
