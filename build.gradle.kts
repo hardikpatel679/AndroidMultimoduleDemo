@@ -9,8 +9,9 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.kotlin.ksp) apply false
     alias(libs.plugins.kotlin.serialization) apply false
-    jacoco
 }
+
+apply(plugin = "jacoco")
 
 val jacocoVersion = libs.versions.jacoco.get()
 
@@ -29,7 +30,7 @@ subprojects {
     }
 }
 
-val fileFilter = mutableListOf(
+val fileFilter = listOf(
     "**/R.class",
     "**/R$*.class",
     "**/BuildConfig.*",
@@ -58,60 +59,45 @@ val fileFilter = mutableListOf(
     "**/theme/**"
 )
 
-val debugTree = mutableListOf<FileTree>()
-val executionData = mutableListOf<FileCollection>()
-
-subprojects {
-    val subprojectName = name
-    afterEvaluate {
-        val isAndroidApp = plugins.hasPlugin("com.android.application")
-        val isAndroidLib = plugins.hasPlugin("com.android.library")
-
-        if (isAndroidApp || isAndroidLib) {
-            val variant = "devDebug"
-            val testTaskName = "test${variant.capitalize()}UnitTest"
-            
-            if (tasks.findByName(testTaskName) != null) {
-                debugTree.add(fileTree("${buildDir}/tmp/kotlin-classes/${variant}") {
-                    setExcludes(fileFilter)
-                })
-                debugTree.add(fileTree("${buildDir}/intermediates/javac/${variant}/classes") {
-                    setExcludes(fileFilter)
-                })
-                executionData.add(files("${buildDir}/jacoco/${testTaskName}.exec"))
-            }
-        } else {
-            // JVM module (like :domain)
-            debugTree.add(fileTree("${buildDir}/classes/kotlin/main") {
-                setExcludes(fileFilter)
-            })
-            executionData.add(files("${buildDir}/jacoco/test.exec"))
-        }
-    }
-}
-
 tasks.register<JacocoReport>("jacocoFullReport") {
     group = "Reporting"
     description = "Generate Jacoco coverage reports for all modules"
 
-    dependsOn(subprojects.map { it.tasks.withType<Test>() })
+    // Depend on all test tasks in subprojects
+    dependsOn(subprojects.flatMap { it.tasks.withType<Test>() })
 
     reports {
         xml.required.set(true)
         html.required.set(true)
     }
 
-    sourceDirectories.setFrom(files(subprojects.map { 
-        val path = if (it.plugins.hasPlugin("com.android.application") || it.plugins.hasPlugin("com.android.library")) {
-            "src/main/java"
-        } else {
-            "src/main/kotlin"
+    // Source directories
+    val sourceDirs = subprojects.flatMap { subproject ->
+        listOf("src/main/java", "src/main/kotlin").map { path ->
+            file("${subproject.projectDir}/$path")
         }
-        "${it.projectDir}/$path" 
-    }))
-    
-    classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(files(executionData))
+    }.filter { it.exists() }
+    sourceDirectories.setFrom(files(sourceDirs))
+
+    // Class directories - collect from all variants to be flavor-agnostic
+    val classDirs = subprojects.map { subproject ->
+        val subProjectBuildDir = subproject.layout.buildDirectory.get().asFile
+        fileTree(subProjectBuildDir) {
+            include("**/tmp/kotlin-classes/**")
+            include("**/intermediates/javac/**/classes/**")
+            include("**/classes/kotlin/main/**")
+            exclude(fileFilter)
+        }
+    }
+    classDirectories.setFrom(files(classDirs))
+
+    // Execution data - collect all .exec files found in subprojects
+    val execData = subprojects.map { subproject ->
+        fileTree(subproject.layout.buildDirectory.get().asFile) {
+            include("**/*.exec")
+        }
+    }
+    executionData.setFrom(files(execData))
 }
 
 tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
@@ -120,17 +106,11 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
 
     dependsOn("jacocoFullReport")
 
-    sourceDirectories.setFrom(files(subprojects.map { 
-        val path = if (it.plugins.hasPlugin("com.android.application") || it.plugins.hasPlugin("com.android.library")) {
-            "src/main/java"
-        } else {
-            "src/main/kotlin"
-        }
-        "${it.projectDir}/$path" 
-    }))
-    
-    classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(files(executionData))
+    // Use same source/class/exec as the report
+    val fullReport = tasks.named<JacocoReport>("jacocoFullReport").get()
+    sourceDirectories.setFrom(fullReport.sourceDirectories)
+    classDirectories.setFrom(fullReport.classDirectories)
+    executionData.setFrom(fullReport.executionData)
 
     violationRules {
         rule {
