@@ -7,8 +7,29 @@ on:
     branches: [ "main", "develop" ]
 
 jobs:
-  test_and_build:
+  # Job to determine which flavors to run
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      flavors: ${{ steps.set-flavors.outputs.flavors }}
+    steps:
+      - id: set-flavors
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Run dev and prod flavors on main branch
+            echo "flavors=[\"dev\", \"prod\"]" >> $GITHUB_OUTPUT
+          else
+            # Run only dev flavor on other branches
+            echo "flavors=[\"dev\"]" >> $GITHUB_OUTPUT
+          fi
+
+  test_and_build:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: ${{ fromJson(needs.setup.outputs.flavors) }}
 
     steps:
     - name: Checkout Code
@@ -24,17 +45,16 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Run Lint
-      run: ./gradlew lintDevDebug
+    - name: Run Lint (${{ matrix.flavor }})
+      run: ./gradlew lint${{ matrix.flavor }}Debug
 
-    - name: Run Unit Tests
-      run: ./gradlew testDevDebugUnitTest
+    - name: Run Unit Tests (${{ matrix.flavor }})
+      run: ./gradlew test${{ matrix.flavor }}DebugUnitTest
 
-    # 3. Code Coverage Check (Threshold 90%)
-    - name: Check Code Coverage
+    - name: Check Code Coverage (${{ matrix.flavor }})
       run: ./gradlew jacocoCoverageVerification
 
-    - name: Run UI Tests
+    - name: Run UI Tests (${{ matrix.flavor }})
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
@@ -43,21 +63,21 @@ jobs:
         force-avd-creation: false
         emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 2048
         disable-animations: true
-        script: ./gradlew connectedDevDebugAndroidTest
+        script: ./gradlew connected${{ matrix.flavor }}DebugAndroidTest
       env:
         ADB_INSTALL_TIMEOUT: 10
 
-    - name: Build Prod Release APK
-      run: ./gradlew :app:assembleProdRelease
+    - name: Build APK (${{ matrix.flavor }})
+      run: ./gradlew :app:assemble${{ matrix.flavor }}Release
 
-    - name: Upload Artifacts
+    - name: Upload Artifacts (${{ matrix.flavor }})
       uses: actions/upload-artifact@v4
       with:
-        name: app-prod-release
-        path: app/build/outputs/apk/prod/release/*.apk
+        name: app-${{ matrix.flavor }}-release
+        path: app/build/outputs/apk/${{ matrix.flavor }}/release/*.apk
 
-    - name: Upload Coverage Report
+    - name: Upload Coverage Report (${{ matrix.flavor }})
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
+        name: coverage-report-${{ matrix.flavor }}
         path: build/reports/jacoco/jacocoFullReport/html/
