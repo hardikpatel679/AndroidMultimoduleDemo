@@ -57,9 +57,10 @@ jobs:
     - name: Run UI Tests (${{ matrix.cfg.flavor }})
       uses: reactivecircus/android-emulator-runner@v2
       with:
-        api-level: 29
+        api-level: 31
         target: google_apis
-        arch: ${{ runner.os == 'macOS' && 'x86_64' || 'x86' }}
+        # Use arm64-v8a for macOS (Apple Silicon runners) and x86_64 for Ubuntu
+        arch: ${{ runner.os == 'macOS' && 'arm64-v8a' || 'x86_64' }}
         force-avd-creation: true
         emulator-options: >-
           -no-window
