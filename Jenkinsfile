@@ -16,11 +16,24 @@ pipeline {
             sortMode: 'ASCENDING_SMART',
             selectedValue: 'NONE'
         )
+
+        choice(
+            name: 'TESTER_GROUP', 
+            choices: ['qa-team', 'beta-testers', 'internal-devs'], 
+            description: 'Select the Firebase Tester Group to notify during Staging deployment.'
+        )
     }
 
     environment {
+        // PRE-REQUISITE: Add a "Secret text" credential in Jenkins with ID 'FIREBASE_TOKEN'
+        FIREBASE_TOKEN = credentials('FIREBASE_TOKEN')
         ANDROID_HOME = "/Users/hardikp/Library/Android/sdk"
-        PATH = "${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:${env.PATH}"
+        
+        // Define absolute path to firebase binary to avoid PATH issues
+        FIREBASE_BIN = "/Users/hardikp/.nvm/versions/node/v24.15.0/bin/firebase"
+        
+        // Expanded PATH to include common locations for Homebrew, Node, and NVM
+        PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:/Users/hardikp/.nvm/versions/node/v24.15.0/bin:${env.PATH}"
     }
 
     stages {
@@ -40,6 +53,9 @@ pipeline {
                         ])
                         
                         sh 'chmod +x gradlew'
+
+                        echo "--- Verifying Firebase Connectivity ---"
+                        sh "${env.FIREBASE_BIN} --version"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
                         error("Initialization failed: ${e.message}")
@@ -108,10 +124,50 @@ pipeline {
             steps {
                 script {
                     try {
-                        echo "--- Generating Staging APK ---"
-                        sh './gradlew :app:assembleDevRelease --no-daemon'
+                        echo "--- Generating Signed Staging APK ---"
+                        
+                        // PRE-REQUISITE: Add these credentials in Jenkins
+                        withCredentials([
+                            file(credentialsId: 'RELEASE_KEYSTORE_FILE', variable: 'KEYSTORE_FILE'),
+                            string(credentialsId: 'RELEASE_KEYSTORE_PASSWORD', variable: 'KEYSTORE_PWD'),
+                            string(credentialsId: 'RELEASE_KEY_ALIAS', variable: 'KEY_ALIAS'),
+                            string(credentialsId: 'RELEASE_KEY_PASSWORD', variable: 'KEY_PWD')
+                        ]) {
+                            sh """
+                                ./gradlew :app:assembleDevRelease \
+                                -PRELEASE_STORE_FILE=${KEYSTORE_FILE} \
+                                -PRELEASE_STORE_PASSWORD=${KEYSTORE_PWD} \
+                                -PRELEASE_KEY_ALIAS=${KEY_ALIAS} \
+                                -PRELEASE_KEY_PASSWORD=${KEY_PWD} \
+                                --no-daemon
+                            """
+                        }
+
+                        echo "--- Uploading to Firebase App Distribution ---"
+                        // Find the APK file dynamically
+                        def jenkinsApkBuildPath = sh(script: "find ${WORKSPACE}/app/build/outputs/apk/dev/release -name '*.apk' ! -name '*unsigned*' | head -n 1", returnStdout: true).trim()
+                        
+                        if (!jenkinsApkBuildPath) {
+                            // Fallback to any apk if signed one not found with specific pattern
+                            jenkinsApkBuildPath = sh(script: "find ${WORKSPACE}/app/build/outputs/apk/dev/release -name '*.apk' | head -n 1", returnStdout: true).trim()
+                        }
+                        
+                        if (!jenkinsApkBuildPath) {
+                            error("APK file not found in ${WORKSPACE}/app/build/outputs/apk/dev/release")
+                        }
+                        
+                        echo "Distributing APK: ${jenkinsApkBuildPath}"
+                        
+                        sh """
+                            ${env.FIREBASE_BIN} appdistribution:distribute "${jenkinsApkBuildPath}" \
+                            --app "1:626304171263:android:df1dea97585db187c920ca" \
+                            --groups "${params.TESTER_GROUP}" \
+                            --release-notes "Build from branch: ${env.CURRENT_BRANCH}" \
+                            --token "\$FIREBASE_TOKEN"
+                        """
+                        
                     } catch (Exception e) {
-                        currentBuild.description = "Failed at Deploy to Staging: Could not generate Dev Release APK."
+                        currentBuild.description = "Failed at Deploy to Staging: ${e.message}"
                         error("Staging deployment failed: ${e.message}")
                     }
                 }
@@ -123,10 +179,25 @@ pipeline {
             steps {
                 script {
                     try {
-                        echo "--- Generating Production APK ---"
-                        sh './gradlew :app:assembleProdRelease --no-daemon'
+                        echo "--- Generating Signed Production APK ---"
+                        
+                        withCredentials([
+                            file(credentialsId: 'RELEASE_KEYSTORE_FILE', variable: 'KEYSTORE_FILE'),
+                            string(credentialsId: 'RELEASE_KEYSTORE_PASSWORD', variable: 'KEYSTORE_PWD'),
+                            string(credentialsId: 'RELEASE_KEY_ALIAS', variable: 'KEY_ALIAS'),
+                            string(credentialsId: 'RELEASE_KEY_PASSWORD', variable: 'KEY_PWD')
+                        ]) {
+                            sh """
+                                ./gradlew :app:assembleProdRelease \
+                                -PRELEASE_STORE_FILE=${KEYSTORE_FILE} \
+                                -PRELEASE_STORE_PASSWORD=${KEYSTORE_PWD} \
+                                -PRELEASE_KEY_ALIAS=${KEY_ALIAS} \
+                                -PRELEASE_KEY_PASSWORD=${KEY_PWD} \
+                                --no-daemon
+                            """
+                        }
                     } catch (Exception e) {
-                        currentBuild.description = "Failed at Deploy to Prod: Could not generate Prod Release APK."
+                        currentBuild.description = "Failed at Deploy to Prod: ${e.message}"
                         error("Production deployment failed: ${e.message}")
                     }
                 }

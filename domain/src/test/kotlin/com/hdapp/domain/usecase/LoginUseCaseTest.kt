@@ -44,6 +44,24 @@ class LoginUseCaseTest {
     }
 
     @Test
+    fun `invoke with blank username returns validation error`() = runTest {
+        val result = loginUseCase("   ", "password")
+
+        assertThat(result.isFailure).isTrue()
+        val exception = result.exceptionOrNull()
+        assertThat(exception).isInstanceOf(AppError.BusinessError::class.java)
+    }
+
+    @Test
+    fun `invoke with blank password returns validation error`() = runTest {
+        val result = loginUseCase("username", "   ")
+
+        assertThat(result.isFailure).isTrue()
+        val exception = result.exceptionOrNull()
+        assertThat(exception).isInstanceOf(AppError.BusinessError::class.java)
+    }
+
+    @Test
     fun `invoke with valid credentials returns success`() = runTest {
         val user = User(
             id = 1,

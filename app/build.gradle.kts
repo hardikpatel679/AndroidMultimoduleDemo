@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 configure<ApplicationExtension> {
@@ -52,6 +53,16 @@ configure<ApplicationExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            
+            // Only apply signing if properties are provided (e.g., from Jenkins)
+            if (project.hasProperty("RELEASE_STORE_FILE")) {
+                signingConfig = signingConfigs.create("release") {
+                    storeFile = file(project.property("RELEASE_STORE_FILE") as String)
+                    storePassword = project.property("RELEASE_STORE_PASSWORD") as String
+                    keyAlias = project.property("RELEASE_KEY_ALIAS") as String
+                    keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+                }
+            }
         }
     }
     compileOptions {

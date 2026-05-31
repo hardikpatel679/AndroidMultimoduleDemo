@@ -2,9 +2,11 @@ package com.hdapp.feature.login.mvi
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.hdapp.core.ui.util.UiText
 import com.hdapp.domain.model.AppError
 import com.hdapp.domain.model.User
 import com.hdapp.domain.usecase.LoginUseCase
+import com.hdapp.feature.login.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -131,6 +133,62 @@ class LoginViewModelTest {
             assertThat(errorState.isLoading).isFalse()
             assertThat(errorState.error).isNotNull()
         }
+    }
+
+    @Test
+    fun `LoginClicked NetworkError updates state with network error resource`() = runTest {
+        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.NetworkError)
+
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val error = viewModel.state.value.error as UiText.StringResource
+        assertThat(error.resId).isEqualTo(R.string.error_network)
+    }
+
+    @Test
+    fun `LoginClicked ServerError updates state with server error resource`() = runTest {
+        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.ServerError)
+
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val error = viewModel.state.value.error as UiText.StringResource
+        assertThat(error.resId).isEqualTo(R.string.error_server)
+    }
+
+    @Test
+    fun `LoginClicked BusinessError Validation updates state with correct resource`() = runTest {
+        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.BusinessError("VALIDATION_ERROR", "Msg"))
+
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val error = viewModel.state.value.error as UiText.StringResource
+        assertThat(error.resId).isEqualTo(R.string.error_empty_fields)
+    }
+
+    @Test
+    fun `LoginClicked Generic BusinessError updates state with dynamic string`() = runTest {
+        val msg = "Generic Msg"
+        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.BusinessError("OTHER", msg))
+
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val error = viewModel.state.value.error as UiText.DynamicString
+        assertThat(error.value).isEqualTo(msg)
+    }
+
+    @Test
+    fun `LoginClicked unexpected error updates state with unknown error resource`() = runTest {
+        coEvery { loginUseCase(any(), any()) } returns Result.failure(RuntimeException())
+
+        viewModel.onIntent(LoginIntent.LoginClicked)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val error = viewModel.state.value.error as UiText.StringResource
+        assertThat(error.resId).isEqualTo(R.string.error_unknown)
     }
 
     @Test

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "626304171263",
+    "project_id": "androidmultimoduledemo",
+    "storage_bucket": "androidmultimoduledemo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626304171263:android:5626dce56da60590c920ca",
+        "android_client_info": {
+          "package_name": "com.hdapp.androidmultimodule"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa2jBJ8Fy2I23QGXaj-zJlVZl9Kb2PbcM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626304171263:android:df1dea97585db187c920ca",
+        "android_client_info": {
+          "package_name": "com.hdapp.androidmultimodule.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa2jBJ8Fy2I23QGXaj-zJlVZl9Kb2PbcM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
