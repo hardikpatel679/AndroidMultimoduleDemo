@@ -17,10 +17,10 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             # On main branch: dev on ubuntu, prod on macos
-            echo 'matrix=[{"flavor": "dev", "os": "ubuntu-latest"}, {"flavor": "prod", "os": "macos-latest"}]' >> $GITHUB_OUTPUT
+            echo 'matrix=[{"flavor": "dev", "os": "macos-latest"}, {"flavor": "prod", "os": "macos-latest"}]' >> $GITHUB_OUTPUT
           else
             # On other branches: only dev on ubuntu
-            echo 'matrix=[{"flavor": "dev", "os": "ubuntu-latest"}]' >> $GITHUB_OUTPUT
+            echo 'matrix=[{"flavor": "dev", "os": "macos-latest"}]' >> $GITHUB_OUTPUT
           fi
 
   test_and_build:
