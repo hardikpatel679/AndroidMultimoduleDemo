@@ -2,14 +2,12 @@ pipeline {
     agent any
 
     parameters {
-        // Dropdown for Flavors
         choice(
             name: 'FLAVOR', 
             choices: ['dev', 'prod', 'mock', 'all'],
             description: 'Select the Android flavor to build. "all" will build both dev and prod.'
         )
         
-        // Fetch branch list from Git (Requires "Git Parameter" plugin)
         gitParameter(
             name: 'BRANCH_TO_BUILD', 
             type: 'PT_BRANCH', 
@@ -30,52 +28,39 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
-                    // Use the parameter if provided, otherwise detect automatically
-                    env.CURRENT_BRANCH = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "unknown"
-                    
-                    // Logic for "all" or specific flavors
-                    env.BUILD_ALL = (params.FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
+                    // Resolve branch and flavor logic
+                    env.CURRENT_BRANCH = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
                     env.SELECTED_FLAVOR = params.FLAVOR ?: 'dev'
+                    env.BUILD_ALL = (env.SELECTED_FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
                     
-                    echo "Branch selected: ${env.CURRENT_BRANCH}"
-                    echo "Target Flavor: ${env.SELECTED_FLAVOR}"
-                    echo "Build All Flavors: ${env.BUILD_ALL}"
+                    echo "Branch: ${env.CURRENT_BRANCH} | Flavor: ${env.SELECTED_FLAVOR} | Build All: ${env.BUILD_ALL}"
                     
-                    // Checkout the selected branch
                     checkout([$class: 'GitSCM', 
                         branches: [[name: "${env.CURRENT_BRANCH}"]], 
                         userRemoteConfigs: [[url: 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git']]
                     ])
-                }
-            }
-        }
-
-        stage('Build') {
-            steps {
-                echo "--- Compiling Application ---"
-                sh 'chmod +x gradlew'
-                script {
-                    if (env.BUILD_ALL == 'true') {
-                        sh './gradlew assembleDevDebug assembleProdDebug'
-                    } else {
-                        def capFlavor = env.SELECTED_FLAVOR.capitalize()
-                        sh "./gradlew assemble${capFlavor}Debug"
-                    }
+                    
+                    sh 'chmod +x gradlew'
                 }
             }
         }
 
         stage('Unit Test and Code Coverage') {
             steps {
-                echo "--- Running Unit Tests & Verifying Coverage ---"
                 script {
-                    if (env.BUILD_ALL == 'true') {
-                        sh './gradlew testDevDebugUnitTest testProdDebugUnitTest'
-                    } else {
-                        def capFlavor = env.SELECTED_FLAVOR.capitalize()
-                        sh "./gradlew test${capFlavor}DebugUnitTest"
-                    }
-                    sh './gradlew jacocoCoverageVerification'
+                    echo "--- Running Unit Tests & Verifying Coverage First (Fail Fast) ---"
+                    def testTasks = (env.BUILD_ALL == 'true') ? 'testDevDebugUnitTest testProdDebugUnitTest' : "test${env.SELECTED_FLAVOR.capitalize()}DebugUnitTest"
+                    sh "./gradlew ${testTasks} jacocoCoverageVerification --no-daemon"
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    echo "--- Tests Passed! Now Compiling Application ---"
+                    def tasks = (env.BUILD_ALL == 'true') ? 'assembleDevDebug assembleProdDebug' : "assemble${env.SELECTED_FLAVOR.capitalize()}Debug"
+                    sh "./gradlew ${tasks} --no-daemon"
                 }
             }
         }
@@ -85,15 +70,15 @@ pipeline {
                 expression { env.SELECTED_FLAVOR == 'dev' || env.BUILD_ALL == 'true' }
             }
             steps {
-                echo "--- Building Staging (Dev) APK ---"
-                sh './gradlew :app:assembleDevRelease'
+                echo "--- Generating Staging APK ---"
+                sh './gradlew :app:assembleDevRelease --no-daemon'
             }
         }
 
         stage('FVT') {
             steps {
-                echo "--- Functional Verification Testing (UI Tests) ---"
-                sh './gradlew connectedDevDebugAndroidTest'
+                echo "--- Functional Verification Testing ---"
+                sh './gradlew connectedDevDebugAndroidTest --no-daemon'
             }
         }
 
@@ -107,12 +92,10 @@ pipeline {
         }
 
         stage('Deploy to Prod') {
-            when {
-                expression { env.BUILD_ALL == 'true' || env.SELECTED_FLAVOR == 'prod' }
-            }
+            when { expression { env.BUILD_ALL == 'true' || env.SELECTED_FLAVOR == 'prod' } }
             steps {
-                echo "--- Building Production Release APK ---"
-                sh './gradlew :app:assembleProdRelease'
+                echo "--- Generating Production APK ---"
+                sh './gradlew :app:assembleProdRelease --no-daemon'
             }
         }
     }
@@ -124,7 +107,10 @@ pipeline {
         }
         success {
             archiveArtifacts artifacts: 'app/build/outputs/apk/**/*.apk', fingerprint: true
-            echo "CI/CD Pipeline Succeeded for branch: ${env.CURRENT_BRANCH}"
+            echo "Pipeline Succeeded: ${env.CURRENT_BRANCH}"
+        }
+        failure {
+            echo "Pipeline Failed: ${env.CURRENT_BRANCH}. Tests failed or Coverage threshold not met."
         }
     }
 }
