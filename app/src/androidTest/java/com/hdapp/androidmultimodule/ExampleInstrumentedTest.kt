@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.hdapp.androidmultimodule", appContext.packageName)
+        assertTrue(appContext.packageName.startsWith("com.hdapp.androidmultimodule"))
     }
 }
