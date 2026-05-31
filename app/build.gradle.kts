@@ -75,6 +75,14 @@ configure<ApplicationExtension> {
     }
 }
 
+// Disable Google Services for flavors that are not configured in google-services.json
+// to avoid "No matching client found" errors during build/test.
+tasks.matching { 
+    it.name.contains("GoogleServices") && (it.name.contains("Uat") || it.name.contains("Mock")) 
+}.configureEach {
+    enabled = false
+}
+
 dependencies {
     implementation(project(":domain"))
     implementation(project(":data"))

@@ -64,8 +64,15 @@ tasks.register<JacocoReport>("jacocoFullReport") {
     group = "Reporting"
     description = "Generate Jacoco coverage reports for all modules"
 
-    // Depend on all test tasks in subprojects
-    dependsOn(subprojects.flatMap { it.tasks.withType<Test>() })
+    // Depend on valid test tasks. Filter out mock/uat to avoid Google Services errors.
+    val subprojectsWithTests = subprojects.flatMap { subproject ->
+        subproject.tasks.withType<Test>().matching { task ->
+            val name = task.name.lowercase()
+            // Only include dev, prod, or generic test tasks
+            name.contains("dev") || name.contains("prod") || (!name.contains("mock") && !name.contains("uat"))
+        }
+    }
+    dependsOn(subprojectsWithTests)
 
     reports {
         xml.required.set(true)
