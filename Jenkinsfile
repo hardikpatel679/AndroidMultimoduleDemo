@@ -1,6 +1,23 @@
 pipeline {
     agent any
 
+    parameters {
+        // Dropdown for Flavors
+        choice(
+            name: 'FLAVOR', 
+            choices: ['dev', 'prod', 'uat', 'mock', 'all'], 
+            description: 'Select the Android flavor to build. "all" will build both dev and prod.'
+        )
+        
+        // Dynamic Branch List (Requires "Git Parameter" plugin)
+        // If you don't have the plugin, this will fall back to a manual string input
+        string(
+            name: 'BRANCH_TO_BUILD', 
+            defaultValue: 'master', 
+            description: 'Enter the branch name to build (e.g., master, develop, feature/login)'
+        )
+    }
+
     environment {
         // Path to your Android SDK
         ANDROID_HOME = "/Users/hardikp/Library/Android/sdk"
@@ -11,16 +28,16 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
-                    // Jenkins "Pipeline" jobs use GIT_BRANCH, "Multibranch" use BRANCH_NAME
-                    def fullBranch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: "unknown"
-                    // Strip "origin/" if present
-                    env.CURRENT_BRANCH = fullBranch.contains("/") ? fullBranch.split("/")[-1] : fullBranch
+                    // Use the parameter if provided, otherwise detect automatically
+                    env.CURRENT_BRANCH = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "unknown"
                     
-                    // Determine if this is a main branch (master or main)
-                    env.IS_MAIN_BRANCH = (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main').toString()
+                    // Logic for "all" or specific flavors
+                    env.BUILD_ALL = (params.FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
+                    env.SELECTED_FLAVOR = params.FLAVOR ?: 'dev'
                     
-                    echo "Branch detected: ${env.CURRENT_BRANCH}"
-                    echo "Is Main Branch: ${env.IS_MAIN_BRANCH}"
+                    echo "Branch: ${env.CURRENT_BRANCH}"
+                    echo "Target Flavor: ${env.SELECTED_FLAVOR}"
+                    echo "Build All Flavors: ${env.BUILD_ALL}"
                 }
             }
         }
@@ -30,10 +47,11 @@ pipeline {
                 echo "--- Compiling Application ---"
                 sh 'chmod +x gradlew'
                 script {
-                    if (env.IS_MAIN_BRANCH == 'true') {
+                    if (env.BUILD_ALL == 'true') {
                         sh './gradlew assembleDevDebug assembleProdDebug'
                     } else {
-                        sh './gradlew assembleDevDebug'
+                        def capFlavor = env.SELECTED_FLAVOR.capitalize()
+                        sh "./gradlew assemble${capFlavor}Debug"
                     }
                 }
             }
@@ -43,19 +61,21 @@ pipeline {
             steps {
                 echo "--- Running Unit Tests & Verifying Coverage ---"
                 script {
-                    if (env.IS_MAIN_BRANCH == 'true') {
-                        // Test both flavors on main
+                    if (env.BUILD_ALL == 'true') {
                         sh './gradlew testDevDebugUnitTest testProdDebugUnitTest'
                     } else {
-                        sh './gradlew testDevDebugUnitTest'
+                        def capFlavor = env.SELECTED_FLAVOR.capitalize()
+                        sh "./gradlew test${capFlavor}DebugUnitTest"
                     }
-                    // Run consolidated coverage verification (80% as configured in build.gradle.kts)
                     sh './gradlew jacocoCoverageVerification'
                 }
             }
         }
 
         stage('Deploy to Staging') {
+            when {
+                expression { env.SELECTED_FLAVOR == 'dev' || env.BUILD_ALL == 'true' }
+            }
             steps {
                 echo "--- Building Staging (Dev) APK ---"
                 sh './gradlew :app:assembleDevRelease'
@@ -65,23 +85,22 @@ pipeline {
         stage('FVT') {
             steps {
                 echo "--- Functional Verification Testing (UI Tests) ---"
-                // Runs UI tests on dev flavor to verify staging build
                 sh './gradlew connectedDevDebugAndroidTest'
             }
         }
 
         stage('Gate') {
             when {
-                expression { env.IS_MAIN_BRANCH == 'true' }
+                expression { env.BUILD_ALL == 'true' || env.SELECTED_FLAVOR == 'prod' }
             }
             steps {
-                echo "--- Quality Gate Passed: Branch is ${env.CURRENT_BRANCH} ---"
+                echo "--- Quality Gate Passed ---"
             }
         }
 
         stage('Deploy to Prod') {
             when {
-                expression { env.IS_MAIN_BRANCH == 'true' }
+                expression { env.BUILD_ALL == 'true' || env.SELECTED_FLAVOR == 'prod' }
             }
             steps {
                 echo "--- Building Production Release APK ---"
@@ -92,13 +111,10 @@ pipeline {
 
     post {
         always {
-            // Collect and display test results in Jenkins UI
             junit '**/build/test-results/**/*.xml'
-            // Save coverage reports
             archiveArtifacts artifacts: '**/build/reports/jacoco/**/*.html', allowEmptyArchive: true
         }
         success {
-            // Save all final APKs as build artifacts
             archiveArtifacts artifacts: 'app/build/outputs/apk/**/*.apk', fingerprint: true
             echo "CI/CD Pipeline Succeeded for branch: ${env.CURRENT_BRANCH}"
         }
