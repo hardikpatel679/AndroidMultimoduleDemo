@@ -6,7 +6,7 @@ pipeline {
         ANDROID_HOME = "/Users/hardikp/Library/Android/sdk"
         PATH = "${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:${env.PATH}"
         // Detection for Main branch
-        IS_MAIN_BRANCH = "${env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'master'}"
+        IS_MAIN_BRANCH = "${env.BRANCH_NAME == 'master'}"
     }
 
     stages {
