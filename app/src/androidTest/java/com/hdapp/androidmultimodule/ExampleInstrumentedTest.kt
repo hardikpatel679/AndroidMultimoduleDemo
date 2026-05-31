@@ -19,6 +19,9 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertTrue(appContext.packageName.startsWith("com.hdapp.androidmultimodule"))
+        // Check if package name starts with our base ID to be flavor-independent
+        val expectedBase = "com.hdapp.androidmultimodule"
+        assertTrue("Package name ${appContext.packageName} should start with $expectedBase",
+            appContext.packageName.startsWith(expectedBase))
     }
 }
