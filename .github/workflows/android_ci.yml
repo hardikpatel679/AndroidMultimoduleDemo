@@ -19,7 +19,7 @@ jobs:
             # On main branch: dev on macos, prod on macos
             echo 'matrix=[{"flavor": "dev", "os": "macos-latest"}, {"flavor": "prod", "os": "macos-latest"}]' >> $GITHUB_OUTPUT
           else
-            # On other branches: only dev on ubuntu
+            # On other branches: use macos-latest for stable UI tests
             echo 'matrix=[{"flavor": "dev", "os": "macos-latest"}]' >> $GITHUB_OUTPUT
           fi
 
