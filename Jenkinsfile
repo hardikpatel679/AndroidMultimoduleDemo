@@ -5,16 +5,18 @@ pipeline {
         // Dropdown for Flavors
         choice(
             name: 'FLAVOR', 
-            choices: ['dev', 'prod', 'uat', 'mock', 'all'], 
+            choices: ['dev', 'prod', 'mock', 'all'],
             description: 'Select the Android flavor to build. "all" will build both dev and prod.'
         )
         
-        // Dynamic Branch List (Requires "Git Parameter" plugin)
-        // If you don't have the plugin, this will fall back to a manual string input
-        string(
+        // Fetch branch list from Git (Requires "Git Parameter" plugin)
+        gitParameter(
             name: 'BRANCH_TO_BUILD', 
+            type: 'PT_BRANCH', 
             defaultValue: 'master', 
-            description: 'Enter the branch name to build (e.g., master, develop, feature/login)'
+            description: 'Select the branch to build',
+            sortMode: 'ASCENDING_SMART',
+            selectedValue: 'NONE'
         )
     }
 
@@ -35,9 +37,15 @@ pipeline {
                     env.BUILD_ALL = (params.FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
                     env.SELECTED_FLAVOR = params.FLAVOR ?: 'dev'
                     
-                    echo "Branch: ${env.CURRENT_BRANCH}"
+                    echo "Branch selected: ${env.CURRENT_BRANCH}"
                     echo "Target Flavor: ${env.SELECTED_FLAVOR}"
                     echo "Build All Flavors: ${env.BUILD_ALL}"
+                    
+                    // Checkout the selected branch
+                    checkout([$class: 'GitSCM', 
+                        branches: [[name: "${env.CURRENT_BRANCH}"]], 
+                        userRemoteConfigs: [[url: 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git']]
+                    ])
                 }
             }
         }
