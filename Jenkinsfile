@@ -19,8 +19,8 @@ pipeline {
 
         choice(
             name: 'TESTER_GROUP', 
-            choices: ['qa-team', 'beta-testers', 'internal-devs'], 
-            description: 'Select the Firebase Tester Group to notify during Staging deployment.'
+            choices: ['qa-team', 'internal-beta', 'management'], 
+            description: 'Select the Firebase Tester Group to receive the Staging build.'
         )
     }
 
