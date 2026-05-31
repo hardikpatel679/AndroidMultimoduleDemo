@@ -66,7 +66,7 @@ class LoginUseCaseTest {
 
     @Test
     fun `invoke when repository fails returns failure`() = runTest {
-        val error = AppError.Unauthorized("Invalid credentials")
+        val error = AppError.Unauthorized
         coEvery { repository.login("username", "password") } returns Result.failure(error)
 
         val result = loginUseCase("username", "password")
