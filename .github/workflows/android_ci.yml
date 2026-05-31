@@ -72,7 +72,7 @@ jobs:
         disable-animations: true
         script: adb devices && ./gradlew connected${{ matrix.cfg.flavor }}DebugAndroidTest
       env:
-        ADB_INSTALL_TIMEOUT: 20
+        ADB_INSTALL_TIMEOUT: 30
 
     - name: Build APK (${{ matrix.cfg.flavor }})
       run: ./gradlew :app:assemble${{ matrix.cfg.flavor }}Release
