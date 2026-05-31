@@ -19,8 +19,8 @@ pipeline {
 
         choice(
             name: 'TESTER_GROUP', 
-            choices: ['qa-team', 'internal-beta', 'management'], 
-            description: 'Select the Firebase Tester Group to receive the Staging build.'
+            choices: ['business', 'colaborator---tester'],
+            description: 'Select the Firebase Tester Group Alias to receive the Staging build.'
         )
     }
 
