@@ -23,6 +23,7 @@ class LoginScreenTest {
             }
         }
 
+
         composeTestRule.onNodeWithText("Username").assertIsDisplayed()
         composeTestRule.onNodeWithText("Password").assertIsDisplayed()
         composeTestRule.onNodeWithTag("LoginButton").assertIsDisplayed()
