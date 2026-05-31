@@ -22,6 +22,12 @@ pipeline {
             choices: ['business', 'colaborator---tester'],
             description: 'Select the Firebase Tester Group Alias to receive the Staging build.'
         )
+
+        text(
+            name: 'RELEASE_NOTES', 
+            defaultValue: 'New features and bug fixes.', 
+            description: 'Enter the release notes for Firebase App Distribution.'
+        )
     }
 
     environment {
@@ -162,7 +168,7 @@ pipeline {
                             ${env.FIREBASE_BIN} appdistribution:distribute "${jenkinsApkBuildPath}" \
                             --app "1:626304171263:android:df1dea97585db187c920ca" \
                             --groups "${params.TESTER_GROUP}" \
-                            --release-notes "Build from branch: ${env.CURRENT_BRANCH}" \
+                            --release-notes "${params.RELEASE_NOTES}" \
                             --token "\$FIREBASE_TOKEN"
                         """
                         
