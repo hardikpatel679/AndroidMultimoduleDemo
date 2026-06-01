@@ -85,17 +85,17 @@ pipeline {
                         sh 'chmod +x gradlew'
 
                         echo "--- Verifying Firebase Connectivity ---"
-                        // Look for firebase in standard paths, and specifically check your NVM folder to avoid a slow full-disk search
+                        // Generic search for firebase binary across common locations and any NVM version
                         def findFirebase = sh(script: """
                             which firebase || \
-                            find /Users/hardikp/.nvm -name firebase -type f -perm +111 2>/dev/null | head -n 1 || \
-                            find /usr/local/bin -name firebase -type f -perm +111 2>/dev/null | head -n 1
+                            find /opt/homebrew/bin /usr/local/bin /Users/hardikp/.nvm/versions/node/*/bin -name firebase -perm +111 2>/dev/null | head -n 1
                         """, returnStdout: true).trim()
                         
                         if (!findFirebase) {
-                            error("Firebase CLI not found. Please ensure it is installed and available to Jenkins.")
+                            error("Firebase CLI not found. Please ensure it is installed and available to Jenkins. (Try: npm install -g firebase-tools)")
                         }
                         env.FIREBASE_EXE = findFirebase
+                        echo "Using Firebase CLI at: ${env.FIREBASE_EXE}"
                         sh "${env.FIREBASE_EXE} --version"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
