@@ -59,14 +59,23 @@ pipeline {
                         // 2. Extract Flavors and Build Types from the project itself
                         def gradleFile = readFile('app/build.gradle.kts')
                         
-                        // Extract flavors
-                        def flavorMatches = (gradleFile =~ /create\("(.+?)"\)/).findAll()
-                        def projectFlavors = flavorMatches.collect { it[1] }.unique()
+                        // Extract flavors using sandbox-friendly matcher
+                        def flavorList = []
+                        def flavorMatcher = (gradleFile =~ /create\("(.+?)"\)/)
+                        while (flavorMatcher.find()) {
+                            flavorList.add(flavorMatcher.group(1))
+                        }
+                        def projectFlavors = flavorList.unique()
                         env.PROJECT_FLAVORS = projectFlavors.join(',')
                         
-                        // Extract build types (variants)
-                        def typeMatches = (gradleFile =~ /(?:release|debug|create\("(.+?)"\)) \{/).findAll()
-                        def projectTypes = typeMatches.collect { it[1] ?: (it[0].contains('release') ? 'release' : 'debug') }.unique()
+                        // Extract build types (variants) using sandbox-friendly matcher
+                        def typeList = []
+                        def typeMatcher = (gradleFile =~ /(?:release|debug|create\("(.+?)"\)) \{/)
+                        while (typeMatcher.find()) {
+                            def type = typeMatcher.group(1) ?: (typeMatcher.group(0).contains('release') ? 'release' : 'debug')
+                            typeList.add(type)
+                        }
+                        def projectTypes = typeList.unique()
                         env.PROJECT_TYPES = projectTypes.join(',')
                         
                         echo "Detected Project Flavors: ${env.PROJECT_FLAVORS}"
