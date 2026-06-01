@@ -86,21 +86,17 @@ pipeline {
 
                         echo "--- Verifying Firebase Connectivity ---"
                         // Generic search for firebase binary across common locations and any NVM version
-                        def findFirebase = sh(script: """
-                            which firebase || \
-                            find /opt/homebrew/bin /usr/local/bin /Users/*/.nvm/versions/node/*/bin -name firebase -perm +111 2>/dev/null | head -n 1
-                        """, returnStdout: true).trim()
-                        
-                        if (!findFirebase) {
-                            error("Firebase CLI not found. Please ensure it is installed and available to Jenkins. (Try: npm install -g firebase-tools)")
-                        }
-                        
-                        // Extract the bin directory and add it to PATH so 'node' can be found by the firebase script
-                        def binDir = findFirebase.substring(0, findFirebase.lastIndexOf('/'))
-                        env.PATH = "${binDir}:${env.PATH}"
-                        
-                        echo "Using Firebase CLI from: ${binDir}"
-                        sh "firebase --version"
+                        sh """
+                            FIREBASE_BIN=\$(which firebase || find /opt/homebrew/bin /usr/local/bin /Users/*/.nvm/versions/node/*/bin -name firebase -perm +111 2>/dev/null | head -n 1)
+                            if [ -z "\$FIREBASE_BIN" ]; then 
+                                echo "Firebase CLI not found. Please ensure it is installed and available to Jenkins."
+                                exit 1
+                            fi
+                            # Add the bin directory to PATH so 'node' can be found by the firebase script
+                            export PATH=\$(dirname \$FIREBASE_BIN):\$PATH
+                            echo "Using Firebase CLI from: \$(dirname \$FIREBASE_BIN)"
+                            firebase --version
+                        """
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
                         error("Initialization failed: ${e.message}")
@@ -221,6 +217,8 @@ pipeline {
                         echo "Distributing APK: ${jenkinsApkBuildPath}"
                         
                         sh """
+                            FIREBASE_BIN=\$(which firebase || find /opt/homebrew/bin /usr/local/bin /Users/*/.nvm/versions/node/*/bin -name firebase -perm +111 2>/dev/null | head -n 1)
+                            export PATH=\$(dirname \$FIREBASE_BIN):\$PATH
                             firebase appdistribution:distribute "${jenkinsApkBuildPath}" \
                             --app "1:626304171263:android:df1dea97585db187c920ca" \
                             --groups "${params.TESTER_GROUP}" \
