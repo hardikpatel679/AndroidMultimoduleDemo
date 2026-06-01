@@ -39,7 +39,7 @@ pipeline {
     environment {
         // PRE-REQUISITE: Add a "Secret text" credential in Jenkins with ID 'FIREBASE_TOKEN'
         FIREBASE_TOKEN = credentials('FIREBASE_TOKEN')
-        ANDROID_HOME = "/Users/hardikp/Library/Android/sdk"
+        ANDROID_HOME = "${HOME}/Library/Android/sdk"
         
         // Code Coverage Threshold (%)
         COVERAGE_THRESHOLD = "90"
@@ -88,7 +88,7 @@ pipeline {
                         // Generic search for firebase binary across common locations and any NVM version
                         def findFirebase = sh(script: """
                             which firebase || \
-                            find /opt/homebrew/bin /usr/local/bin /Users/hardikp/.nvm/versions/node/*/bin -name firebase -perm +111 2>/dev/null | head -n 1
+                            find /opt/homebrew/bin /usr/local/bin /Users/*/.nvm/versions/node/*/bin -name firebase -perm +111 2>/dev/null | head -n 1
                         """, returnStdout: true).trim()
                         
                         if (!findFirebase) {
