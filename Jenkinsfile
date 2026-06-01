@@ -58,8 +58,8 @@ pipeline {
                         env.CURRENT_BRANCH = rawBranch.contains('/') ? rawBranch.split('/')[-1] : rawBranch
                         
                         // 2. Extract Flavors from the project itself
-                        // Improved regex to only look inside productFlavors block and exclude common false positives
-                        env.PROJECT_FLAVORS = sh(script: "sed -n '/productFlavors {/,/}/p' app/build.gradle.kts | grep -o 'create(\"[^\"]*\")' | cut -d'\"' -f2 | sort -u | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
+                        // Improved logic: grep the whole file but exclude common false positives like 'release' or 'debug' signing configs
+                        env.PROJECT_FLAVORS = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | grep -vE 'release|debug|config' | sort -u | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
                         
                         echo "Detected Project Flavors: ${env.PROJECT_FLAVORS}"
                         
@@ -85,10 +85,15 @@ pipeline {
                         sh 'chmod +x gradlew'
 
                         echo "--- Verifying Firebase Connectivity ---"
-                        // Robustly find firebase binary, checking common NVM locations if not in PATH
-                        def findFirebase = sh(script: "which firebase || find /Users -name firebase -type f -perm +111 -path '*/.nvm/*' 2>/dev/null | head -n 1", returnStdout: true).trim()
+                        // Look for firebase in standard paths, and specifically check your NVM folder to avoid a slow full-disk search
+                        def findFirebase = sh(script: """
+                            which firebase || \
+                            find /Users/hardikp/.nvm -name firebase -type f -perm +111 2>/dev/null | head -n 1 || \
+                            find /usr/local/bin -name firebase -type f -perm +111 2>/dev/null | head -n 1
+                        """, returnStdout: true).trim()
+                        
                         if (!findFirebase) {
-                            error("Firebase CLI not found. Please install it globally: sudo npm install -g firebase-tools")
+                            error("Firebase CLI not found. Please ensure it is installed and available to Jenkins.")
                         }
                         env.FIREBASE_EXE = findFirebase
                         sh "${env.FIREBASE_EXE} --version"
