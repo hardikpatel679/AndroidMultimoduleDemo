@@ -4,8 +4,14 @@ pipeline {
     parameters {
         choice(
             name: 'FLAVOR', 
-            choices: ['dev', 'prod', 'mock', 'all'],
+            choices: ['dev', 'prod', 'uat', 'mock', 'all'],
             description: 'Select the Android flavor to build. "all" will build both dev and prod.'
+        )
+        
+        choice(
+            name: 'VARIANT', 
+            choices: ['Debug', 'Release'],
+            description: 'Select the Build Type (Variant).'
         )
         
         gitParameter(
@@ -35,11 +41,11 @@ pipeline {
         FIREBASE_TOKEN = credentials('FIREBASE_TOKEN')
         ANDROID_HOME = "/Users/hardikp/Library/Android/sdk"
         
-        // Define absolute path to firebase binary to avoid PATH issues
-        FIREBASE_BIN = "/Users/hardikp/.nvm/versions/node/v24.15.0/bin/firebase"
+        // Code Coverage Threshold (%)
+        COVERAGE_THRESHOLD = "90"
         
-        // Expanded PATH to include common locations for Homebrew, Node, and NVM
-        PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:/Users/hardikp/.nvm/versions/node/v24.15.0/bin:${env.PATH}"
+        // Expanded PATH to include common locations for Homebrew, Node, and System Binaries
+        PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:${env.PATH}"
     }
 
     stages {
@@ -47,12 +53,38 @@ pipeline {
             steps {
                 script {
                     try {
+                        // 1. Resolve basic branch info
                         env.CURRENT_BRANCH = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
+                        
+                        // 2. Extract Flavors and Build Types from the project itself
+                        def gradleFile = readFile('app/build.gradle.kts')
+                        
+                        // Extract flavors
+                        def flavorMatches = (gradleFile =~ /create\("(.+?)"\)/).findAll()
+                        def projectFlavors = flavorMatches.collect { it[1] }.unique()
+                        env.PROJECT_FLAVORS = projectFlavors.join(',')
+                        
+                        // Extract build types (variants)
+                        def typeMatches = (gradleFile =~ /(?:release|debug|create\("(.+?)"\)) \{/).findAll()
+                        def projectTypes = typeMatches.collect { it[1] ?: (it[0].contains('release') ? 'release' : 'debug') }.unique()
+                        env.PROJECT_TYPES = projectTypes.join(',')
+                        
+                        echo "Detected Project Flavors: ${env.PROJECT_FLAVORS}"
+                        echo "Detected Project Build Types: ${env.PROJECT_TYPES}"
+                        
+                        // 3. Resolve selected flavor and variant
                         env.SELECTED_FLAVOR = params.FLAVOR ?: 'dev'
+                        env.SELECTED_VARIANT = params.VARIANT ?: 'Debug'
                         env.BUILD_ALL = (env.SELECTED_FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
                         
-                        echo "Branch: ${env.CURRENT_BRANCH} | Flavor: ${env.SELECTED_FLAVOR} | Build All: ${env.BUILD_ALL}"
+                        echo "Branch: ${env.CURRENT_BRANCH} | Flavor: ${env.SELECTED_FLAVOR} | Variant: ${env.SELECTED_VARIANT} | Build All: ${env.BUILD_ALL}"
                         
+                        // 4. Validate selected flavor against detected flavors
+                        if (env.SELECTED_FLAVOR != 'all' && !projectFlavors.contains(env.SELECTED_FLAVOR)) {
+                            echo "Warning: Selected flavor '${env.SELECTED_FLAVOR}' not found in project. Defaulting to 'dev'."
+                            env.SELECTED_FLAVOR = 'dev'
+                        }
+
                         checkout([$class: 'GitSCM', 
                             branches: [[name: "${env.CURRENT_BRANCH}"]], 
                             userRemoteConfigs: [[url: 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git']]
@@ -61,7 +93,9 @@ pipeline {
                         sh 'chmod +x gradlew'
 
                         echo "--- Verifying Firebase Connectivity ---"
-                        sh "${env.FIREBASE_BIN} --version"
+                        // Find firebase dynamically in the system path
+                        env.FIREBASE_EXE = sh(script: "which firebase", returnStdout: true).trim()
+                        sh "${env.FIREBASE_EXE} --version"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
                         error("Initialization failed: ${e.message}")
@@ -74,12 +108,19 @@ pipeline {
             steps {
                 script {
                     try {
-                        echo "--- Running Unit Tests & Verifying 90% Coverage ---"
-                        def testTasks = (env.BUILD_ALL == 'true') ? 'testDevDebugUnitTest testProdDebugUnitTest' : "test${env.SELECTED_FLAVOR.capitalize()}DebugUnitTest"
-                        sh "./gradlew ${testTasks} jacocoCoverageVerification --no-daemon"
+                        def variant = env.SELECTED_VARIANT ?: 'Debug'
+                        echo "--- Running Unit Tests & Verifying ${env.COVERAGE_THRESHOLD}% Coverage for ${variant} ---"
+                        
+                        def testTasks = (env.BUILD_ALL == 'true') ? 
+                            env.PROJECT_FLAVORS.split(',').collect { "test${it.capitalize()}${variant}UnitTest" }.join(' ') : 
+                            "test${env.SELECTED_FLAVOR.capitalize()}${variant}UnitTest"
+                        
+                        // Pass the threshold to Gradle as well to ensure synchronization
+                        def thresholdDecimal = (env.COVERAGE_THRESHOLD.toInteger() / 100).toString()
+                        sh "./gradlew ${testTasks} jacocoCoverageVerification -PcoverageThreshold=${thresholdDecimal} --no-daemon"
                     } catch (Exception e) {
-                        currentBuild.description = "Failed at Unit Tests/Coverage: Check if threshold 90% is met or tests are passing."
-                        error("Unit Test or Coverage verification failed. Ensure coverage is >= 90%.")
+                        currentBuild.description = "Failed at Unit Tests/Coverage: Check if threshold ${env.COVERAGE_THRESHOLD}% is met or tests are passing."
+                        error("Unit Test or Coverage verification failed. Ensure coverage is >= ${env.COVERAGE_THRESHOLD}%.")
                     }
                 }
             }
@@ -89,8 +130,13 @@ pipeline {
             steps {
                 script {
                     try {
-                        echo "--- Functional Verification Testing ---"
-                        sh './gradlew connectedDevDebugAndroidTest --no-daemon'
+                        def variant = env.SELECTED_VARIANT ?: 'Debug'
+                        echo "--- Functional Verification Testing (${variant}) ---"
+                        
+                        // For UI tests, we usually just test the dev flavor to save time, 
+                        // or we test the selected flavor.
+                        def flavorToTest = (env.SELECTED_FLAVOR == 'all') ? 'dev' : env.SELECTED_FLAVOR
+                        sh "./gradlew connected${flavorToTest.capitalize()}${variant}AndroidTest --no-daemon"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at FVT: UI Tests failed or Emulator not responsive."
                         error("UI Testing (FVT) failed.")
@@ -112,8 +158,13 @@ pipeline {
             steps {
                 script {
                     try {
-                        echo "--- Compiling Application ---"
-                        def tasks = (env.BUILD_ALL == 'true') ? 'assembleDevDebug assembleProdDebug' : "assemble${env.SELECTED_FLAVOR.capitalize()}Debug"
+                        def variant = env.SELECTED_VARIANT ?: 'Debug'
+                        echo "--- Compiling Application (${variant}) ---"
+                        
+                        def tasks = (env.BUILD_ALL == 'true') ? 
+                            env.PROJECT_FLAVORS.split(',').collect { "assemble${it.capitalize()}${variant}" }.join(' ') : 
+                            "assemble${env.SELECTED_FLAVOR.capitalize()}${variant}"
+
                         sh "./gradlew ${tasks} --no-daemon"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Build: Compilation error in Android code."
@@ -165,7 +216,7 @@ pipeline {
                         echo "Distributing APK: ${jenkinsApkBuildPath}"
                         
                         sh """
-                            ${env.FIREBASE_BIN} appdistribution:distribute "${jenkinsApkBuildPath}" \
+                            ${env.FIREBASE_EXE} appdistribution:distribute "${jenkinsApkBuildPath}" \
                             --app "1:626304171263:android:df1dea97585db187c920ca" \
                             --groups "${params.TESTER_GROUP}" \
                             --release-notes "${params.RELEASE_NOTES}" \

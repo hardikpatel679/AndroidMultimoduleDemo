@@ -123,7 +123,8 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
     violationRules {
         rule {
             limit {
-                minimum = "0.90".toBigDecimal()
+                val threshold = project.findProperty("coverageThreshold")?.toString() ?: "0.90"
+                minimum = threshold.toBigDecimal()
             }
         }
     }
