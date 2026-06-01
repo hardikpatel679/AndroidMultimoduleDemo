@@ -1,13 +1,3 @@
-def getProjectFlavors() {
-    def gradleFile = readFile('app/build.gradle.kts')
-    def flavorList = []
-    def flavorMatcher = (gradleFile =~ /create\("(.+?)"\)/)
-    while (flavorMatcher.find()) {
-        flavorList.add(flavorMatcher.group(1))
-    }
-    return flavorList.unique().join(',')
-}
-
 pipeline {
     agent any
 
@@ -64,11 +54,12 @@ pipeline {
                 script {
                     try {
                         // 1. Resolve basic branch info
-                        env.CURRENT_BRANCH = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
+                        def rawBranch = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
+                        env.CURRENT_BRANCH = rawBranch.contains('/') ? rawBranch.split('/')[-1] : rawBranch
                         
                         // 2. Extract Flavors from the project itself
-                        // Using a simple shell command to avoid Groovy Regex Sandbox issues
-                        env.PROJECT_FLAVORS = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | sort -u | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
+                        // Improved regex to only look inside productFlavors block and exclude common false positives
+                        env.PROJECT_FLAVORS = sh(script: "sed -n '/productFlavors {/,/}/p' app/build.gradle.kts | grep -o 'create(\"[^\"]*\")' | cut -d'\"' -f2 | sort -u | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
                         
                         echo "Detected Project Flavors: ${env.PROJECT_FLAVORS}"
                         
@@ -87,15 +78,19 @@ pipeline {
                         }
 
                         checkout([$class: 'GitSCM', 
-                            branches: [[name: "${env.CURRENT_BRANCH}"]], 
+                            branches: [[name: "${rawBranch}"]], 
                             userRemoteConfigs: [[url: 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git']]
                         ])
                         
                         sh 'chmod +x gradlew'
 
                         echo "--- Verifying Firebase Connectivity ---"
-                        // Find firebase dynamically in the system path
-                        env.FIREBASE_EXE = sh(script: "which firebase", returnStdout: true).trim()
+                        // Robustly find firebase binary, checking common NVM locations if not in PATH
+                        def findFirebase = sh(script: "which firebase || find /Users -name firebase -type f -perm +111 -path '*/.nvm/*' 2>/dev/null | head -n 1", returnStdout: true).trim()
+                        if (!findFirebase) {
+                            error("Firebase CLI not found. Please install it globally: sudo npm install -g firebase-tools")
+                        }
+                        env.FIREBASE_EXE = findFirebase
                         sh "${env.FIREBASE_EXE} --version"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
