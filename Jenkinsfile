@@ -1,3 +1,13 @@
+def getProjectFlavors() {
+    def gradleFile = readFile('app/build.gradle.kts')
+    def flavorList = []
+    def flavorMatcher = (gradleFile =~ /create\("(.+?)"\)/)
+    while (flavorMatcher.find()) {
+        flavorList.add(flavorMatcher.group(1))
+    }
+    return flavorList.unique().join(',')
+}
+
 pipeline {
     agent any
 
@@ -56,30 +66,11 @@ pipeline {
                         // 1. Resolve basic branch info
                         env.CURRENT_BRANCH = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
                         
-                        // 2. Extract Flavors and Build Types from the project itself
-                        def gradleFile = readFile('app/build.gradle.kts')
-                        
-                        // Extract flavors using sandbox-friendly matcher
-                        def flavorList = []
-                        def flavorMatcher = (gradleFile =~ /create\("(.+?)"\)/)
-                        while (flavorMatcher.find()) {
-                            flavorList.add(flavorMatcher.group(1))
-                        }
-                        def projectFlavors = flavorList.unique()
-                        env.PROJECT_FLAVORS = projectFlavors.join(',')
-                        
-                        // Extract build types (variants) using sandbox-friendly matcher
-                        def typeList = []
-                        def typeMatcher = (gradleFile =~ /(?:release|debug|create\("(.+?)"\)) \{/)
-                        while (typeMatcher.find()) {
-                            def type = typeMatcher.group(1) ?: (typeMatcher.group(0).contains('release') ? 'release' : 'debug')
-                            typeList.add(type)
-                        }
-                        def projectTypes = typeList.unique()
-                        env.PROJECT_TYPES = projectTypes.join(',')
+                        // 2. Extract Flavors from the project itself
+                        // Using a simple shell command to avoid Groovy Regex Sandbox issues
+                        env.PROJECT_FLAVORS = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | sort -u | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
                         
                         echo "Detected Project Flavors: ${env.PROJECT_FLAVORS}"
-                        echo "Detected Project Build Types: ${env.PROJECT_TYPES}"
                         
                         // 3. Resolve selected flavor and variant
                         env.SELECTED_FLAVOR = params.FLAVOR ?: 'dev'
@@ -89,7 +80,8 @@ pipeline {
                         echo "Branch: ${env.CURRENT_BRANCH} | Flavor: ${env.SELECTED_FLAVOR} | Variant: ${env.SELECTED_VARIANT} | Build All: ${env.BUILD_ALL}"
                         
                         // 4. Validate selected flavor against detected flavors
-                        if (env.SELECTED_FLAVOR != 'all' && !projectFlavors.contains(env.SELECTED_FLAVOR)) {
+                        def flavorList = env.PROJECT_FLAVORS.split(',')
+                        if (env.SELECTED_FLAVOR != 'all' && !flavorList.contains(env.SELECTED_FLAVOR)) {
                             echo "Warning: Selected flavor '${env.SELECTED_FLAVOR}' not found in project. Defaulting to 'dev'."
                             env.SELECTED_FLAVOR = 'dev'
                         }
