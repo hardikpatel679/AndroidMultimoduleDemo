@@ -109,16 +109,17 @@ pipeline {
             steps {
                 script {
                     try {
-                        def variant = env.SELECTED_VARIANT ?: 'Debug'
-                        echo "--- Running Unit Tests & Verifying ${env.COVERAGE_THRESHOLD}% Coverage for ${variant} ---"
+                        // We always run tests on 'Debug' variant as it's the standard for unit tests/coverage
+                        def testVariant = 'Debug'
+                        echo "--- Running Unit Tests & Verifying ${env.COVERAGE_THRESHOLD}% Coverage for ${testVariant} ---"
                         
                         def testTasks = (env.BUILD_ALL == 'true') ? 
-                            env.PROJECT_FLAVORS.split(',').collect { "test${it.capitalize()}${variant}UnitTest" }.join(' ') : 
-                            "test${env.SELECTED_FLAVOR.capitalize()}${variant}UnitTest"
+                            env.PROJECT_FLAVORS.split(',').collect { "test${it.capitalize()}${testVariant}UnitTest" }.join(' ') : 
+                            "test${env.SELECTED_FLAVOR.capitalize()}${testVariant}UnitTest"
                         
                         // Pass the threshold to Gradle as well to ensure synchronization
                         def thresholdDecimal = (env.COVERAGE_THRESHOLD.toInteger() / 100).toString()
-                        sh "./gradlew ${testTasks} jacocoCoverageVerification -PcoverageThreshold=${thresholdDecimal} --no-daemon"
+                        sh "./gradlew ${testTasks} jacocoFullReport jacocoCoverageVerification -PcoverageThreshold=${thresholdDecimal} --no-daemon"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Unit Tests/Coverage: Check if threshold ${env.COVERAGE_THRESHOLD}% is met or tests are passing."
                         error("Unit Test or Coverage verification failed. Ensure coverage is >= ${env.COVERAGE_THRESHOLD}%.")
@@ -131,13 +132,12 @@ pipeline {
             steps {
                 script {
                     try {
-                        def variant = env.SELECTED_VARIANT ?: 'Debug'
-                        echo "--- Functional Verification Testing (${variant}) ---"
+                        // Instrumented tests also standardly run on 'Debug'
+                        def testVariant = 'Debug'
+                        echo "--- Functional Verification Testing (${testVariant}) ---"
                         
-                        // For UI tests, we usually just test the dev flavor to save time, 
-                        // or we test the selected flavor.
                         def flavorToTest = (env.SELECTED_FLAVOR == 'all') ? 'dev' : env.SELECTED_FLAVOR
-                        sh "./gradlew connected${flavorToTest.capitalize()}${variant}AndroidTest --no-daemon"
+                        sh "./gradlew connected${flavorToTest.capitalize()}${testVariant}AndroidTest --no-daemon"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at FVT: UI Tests failed or Emulator not responsive."
                         error("UI Testing (FVT) failed.")
