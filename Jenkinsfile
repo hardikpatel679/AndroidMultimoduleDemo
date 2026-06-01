@@ -94,9 +94,13 @@ pipeline {
                         if (!findFirebase) {
                             error("Firebase CLI not found. Please ensure it is installed and available to Jenkins. (Try: npm install -g firebase-tools)")
                         }
-                        env.FIREBASE_EXE = findFirebase
-                        echo "Using Firebase CLI at: ${env.FIREBASE_EXE}"
-                        sh "${env.FIREBASE_EXE} --version"
+                        
+                        // Extract the bin directory and add it to PATH so 'node' can be found by the firebase script
+                        def binDir = findFirebase.substring(0, findFirebase.lastIndexOf('/'))
+                        env.PATH = "${binDir}:${env.PATH}"
+                        
+                        echo "Using Firebase CLI from: ${binDir}"
+                        sh "firebase --version"
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
                         error("Initialization failed: ${e.message}")
