@@ -221,7 +221,7 @@ pipeline {
                         echo "Distributing APK: ${jenkinsApkBuildPath}"
                         
                         sh """
-                            ${env.FIREBASE_EXE} appdistribution:distribute "${jenkinsApkBuildPath}" \
+                            firebase appdistribution:distribute "${jenkinsApkBuildPath}" \
                             --app "1:626304171263:android:df1dea97585db187c920ca" \
                             --groups "${params.TESTER_GROUP}" \
                             --release-notes "${params.RELEASE_NOTES}" \
