@@ -71,7 +71,7 @@ pipeline {
     // =========================================================================
     parameters {
         // Initial defaults - These update automatically after the first build
-        choice(name: 'FLAVOR', choices: ['dev', 'all'].join('\n'), description: 'Select flavor to build.')
+        choice(name: 'FLAVOR', choices: ['dev'].join('\n'), description: 'Select flavor to build.')
         choice(name: 'VARIANT', choices: ['Debug', 'Release'].join('\n'), description: 'Select Build Type (Variant).')
         gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch to build.')
         choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'].join('\n'), description: 'Firebase Tester Group.')
@@ -128,7 +128,7 @@ pipeline {
                         // Sync UI Parameters for the next build
                         properties([
                             parameters([
-                                choice(name: 'FLAVOR', choices: (flavorList + ['all']).join('\n'), description: 'Select Android flavor.'),
+                                choice(name: 'FLAVOR', choices: flavorList.join('\n'), description: 'Select Android flavor.'),
                                 choice(name: 'VARIANT', choices: ['Debug', 'Release'].join('\n'), description: 'Select Build Type.'),
                                 gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.'),
                                 choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'].join('\n'), description: 'Firebase Group.'),
@@ -139,7 +139,7 @@ pipeline {
                         env.CURRENT_BRANCH = rawBranch.contains('/') ? rawBranch.split('/')[-1] : rawBranch
                         env.SELECTED_FLAVOR = params.FLAVOR ?: flavorList[0]
                         env.SELECTED_VARIANT = params.VARIANT ?: 'Debug'
-                        env.BUILD_ALL = (env.SELECTED_FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
+                        env.BUILD_ALL = (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master')).toString()
                         
                         echo "Environment Ready | OS: ${osName} | Project: ${env.CURRENT_BRANCH} | Flavors: ${env.PROJECT_FLAVORS}"
                         sh 'chmod +x gradlew'
