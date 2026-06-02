@@ -81,14 +81,21 @@ pipeline {
                         checkout([$class: 'GitSCM', branches: [[name: "${rawBranch}"]], userRemoteConfigs: [[url: "${env.REPO_URL}"]]])
                         
                         // DYNAMIC FLAVOR EXTRACTION
-                        def extractedFlavors = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | grep -vE 'release|debug|config' | sort -u", returnStdout: true).trim().split('\n')
-                        env.PROJECT_FLAVORS = extractedFlavors.join(',')
+                        // This command finds all flavors, removes non-flavor keywords, and handles whitespace
+                        def rawFlavors = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | grep -vE 'release|debug|config|test' | sort -u", returnStdout: true).trim()
+                        List<String> flavorList = rawFlavors.split('\n').collect { it.trim() }.findAll { !it.isEmpty() }
+                        
+                        env.PROJECT_FLAVORS = flavorList.join(',')
                         
                         // SELF-UPDATE JENKINS PARAMETERS
-                        // This updates the dropdown for the NEXT build
+                        // This re-configures the job UI for the NEXT build
+                        def finalChoices = []
+                        finalChoices.addAll(flavorList)
+                        finalChoices.add('all')
+
                         properties([
                             parameters([
-                                choice(name: 'FLAVOR', choices: extractedFlavors + ['all'], description: 'Select the Android flavor to build.'),
+                                choice(name: 'FLAVOR', choices: finalChoices, description: 'Select the Android flavor to build.'),
                                 choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type.'),
                                 gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.'),
                                 choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Tester Group.'),
@@ -97,7 +104,7 @@ pipeline {
                         ])
 
                         env.CURRENT_BRANCH = rawBranch.contains('/') ? rawBranch.split('/')[-1] : rawBranch
-                        env.SELECTED_FLAVOR = params.FLAVOR ?: extractedFlavors[0]
+                        env.SELECTED_FLAVOR = params.FLAVOR ?: flavorList[0]
                         env.SELECTED_VARIANT = params.VARIANT ?: 'Debug'
                         env.BUILD_ALL = (env.SELECTED_FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
                         
