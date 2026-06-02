@@ -23,12 +23,10 @@ def deployToFirebase(appId, flavor, buildType) {
     }
 
     // 2. Locate the generated APK built in this workspace
-    // We prioritize signed APKs (! -name '*unsigned*')
     def searchPath = "${WORKSPACE}/app/build/outputs/apk/${flavor}/${buildType}"
     def jenkinsApkPath = sh(script: "find ${searchPath} -name '*.apk' ! -name '*unsigned*' | head -n 1", returnStdout: true).trim()
     
     if (!jenkinsApkPath) {
-        // Fallback to any APK if no specific signed one found
         jenkinsApkPath = sh(script: "find ${searchPath} -name '*.apk' | head -n 1", returnStdout: true).trim()
     }
     
@@ -38,22 +36,12 @@ def deployToFirebase(appId, flavor, buildType) {
 
     echo "Distributing APK: ${jenkinsApkPath}"
 
-    // 3. Upload to Firebase using generic binary resolution
+    // 3. Upload to Firebase using resolved binary
     sh """
-        # Dynamically locate firebase across all common paths (Linux/macOS/NVM)
-        # Add common binary locations to PATH for this shell execution
-        export PATH="/usr/local/bin:/opt/homebrew/bin:/bin:/usr/bin:/usr/sbin:/sbin:\$PATH"
-        
-        # Check all possible NVM installations without hardcoding a version
-        FIREBASE_BIN=\$(which firebase || find /Users /home /var/lib/jenkins -maxdepth 6 -name firebase -perm +111 2>/dev/null | grep -E ".nvm/versions/node/.+/bin/firebase" | head -n 1)
-        
-        if [ -z "\$FIREBASE_BIN" ]; then
-            echo "ERROR: Firebase CLI not found on this server. Install via: npm install -g firebase-tools"
-            exit 1
+        # Ensure 'node' can be found by adding the firebase bin directory to PATH
+        if [ -n \"${env.FIREBASE_BIN_DIR}\" ]; then
+            export PATH=\"${env.FIREBASE_BIN_DIR}:\$PATH\"
         fi
-
-        # Prepend firebase's directory to PATH so it can find its 'node' dependency
-        export PATH=\$(dirname \$FIREBASE_BIN):\$PATH
         
         firebase appdistribution:distribute \"${jenkinsApkPath}\" \\
         --app \"${appId}\" \\
@@ -70,34 +58,29 @@ pipeline {
     // BUILD PARAMETERS
     // =========================================================================
     parameters {
-        // Initial defaults - These update automatically after the first build
         choice(name: 'FLAVOR', choices: ['dev'], description: 'Select flavor to build.')
-        choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type (Variant).')
-        gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch to build.')
+        choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type.')
+        gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.')
         choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Tester Group.')
-        text(name: 'RELEASE_NOTES', defaultValue: 'Automated CI/CD build.', description: 'Notes for testers.')
+        text(name: 'RELEASE_NOTES', defaultValue: 'Automated CI/CD build.', description: 'Notes.')
     }
 
     // =========================================================================
-    // SERVER CONFIGURATION (Generic IDs for Shared Server)
+    // SERVER CONFIGURATION
     // =========================================================================
     environment {
-        // 1. CREDENTIAL IDs (Configure these in Jenkins UI > Manage Jenkins > Credentials)
         FIREBASE_TOKEN_CRED_ID = 'FIREBASE_TOKEN' 
         KEYSTORE_FILE_ID       = 'RELEASE_KEYSTORE_FILE' 
         KEYSTORE_PWD_ID       = 'RELEASE_KEYSTORE_PASSWORD' 
         KEY_ALIAS_ID          = 'RELEASE_KEY_ALIAS' 
         KEY_PWD_ID            = 'RELEASE_KEY_PASSWORD' 
 
-        // 2. FIREBASE APP IDs (Generic for this project)
         FIREBASE_APP_ID_DEV    = "1:626304171263:android:df1dea97585db187c920ca"
         FIREBASE_APP_ID_PROD   = "1:626304171263:android:5626dce56da60590c920ca"
 
-        // 3. PROJECT SETTINGS
         REPO_URL = 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git'
-        COVERAGE_THRESHOLD = "90" // Fail build if coverage < 90%
+        COVERAGE_THRESHOLD = "90"
         
-        // Securely resolve credentials
         FIREBASE_TOKEN = credentials("${env.FIREBASE_TOKEN_CRED_ID}")
     }
 
@@ -106,29 +89,42 @@ pipeline {
             steps {
                 script {
                     try {
-                        // A. Resolve ANDROID_HOME for macOS (Darwin) or Linux fallback
+                        // A. Resolve OS and ANDROID_HOME
                         def osName = sh(script: 'uname', returnStdout: true).trim()
                         if (!env.ANDROID_HOME) {
                             env.ANDROID_HOME = (osName == 'Darwin') ? "${HOME}/Library/Android/sdk" : "/opt/android-sdk"
                         }
                         
-                        // B. Add build tools to system path
-                        env.PATH = "${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:${env.PATH}"
+                        // B. Locate Firebase CLI generically
+                        echo "--- Locating Firebase CLI ---"
+                        // This search covers Homebrew, /usr/local/bin, and deep NVM paths
+                        def findFirebase = sh(script: """
+                            which firebase || \
+                            find /usr/local/bin /opt/homebrew/bin /Users /home /var/lib/jenkins -name firebase -perm +111 2>/dev/null | grep -E \"(/bin/firebase\$|/.nvm/versions/node/)\" | head -n 1
+                        """, returnStdout: true).trim()
+                        
+                        if (!findFirebase) {
+                            error("Firebase CLI not found. Please install via: npm install -g firebase-tools")
+                        }
+                        
+                        env.FIREBASE_BIN_DIR = findFirebase.substring(0, findFirebase.lastIndexOf('/'))
+                        
+                        // C. Construct system PATH
+                        env.PATH = "${env.FIREBASE_BIN_DIR}:${env.ANDROID_HOME}/cmdline-tools/latest/bin:${env.ANDROID_HOME}/platform-tools:${env.PATH}"
+                        echo "Resolved Firebase PATH: ${env.FIREBASE_BIN_DIR}"
 
-                        // C. Checkout selected branch
+                        // D. Checkout
                         def rawBranch = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
                         checkout([$class: 'GitSCM', branches: [[name: "${rawBranch}"]], userRemoteConfigs: [[url: "${env.REPO_URL}"]]])
                         
-                        // D. DYNAMIC FLAVOR DETECTION
-                        // Reads app/build.gradle.kts to automatically update Jenkins UI
+                        // E. Sync Flavors
                         def rawFlavors = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | grep -vE 'release|debug|config|test' | sort -u", returnStdout: true).trim()
                         List<String> flavorList = rawFlavors.split('\n').collect { it.trim() }.findAll { !it.isEmpty() }
                         env.PROJECT_FLAVORS = flavorList.join(',')
                         
-                        // Sync UI Parameters for the next build
                         properties([
                             parameters([
-                                choice(name: 'FLAVOR', choices: flavorList, description: 'Select Android flavor.'),
+                                choice(name: 'FLAVOR', choices: flavorList, description: 'Select flavor.'),
                                 choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type.'),
                                 gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.'),
                                 choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Group.'),
@@ -141,7 +137,6 @@ pipeline {
                         env.SELECTED_VARIANT = params.VARIANT ?: 'Debug'
                         env.BUILD_ALL = (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master')).toString()
                         
-                        echo "Environment Ready | OS: ${osName} | Project: ${env.CURRENT_BRANCH} | Flavors: ${env.PROJECT_FLAVORS}"
                         sh 'chmod +x gradlew'
                     } catch (Exception e) {
                         currentBuild.description = "Initialization Error: ${e.message}"
@@ -155,18 +150,14 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Standardize: Tests always run on Debug for accurate coverage
-                        def testVariant = 'Debug'
-                        echo "--- Verifying ${env.COVERAGE_THRESHOLD}% Coverage ---"
-                        
                         def testTasks = (env.BUILD_ALL == 'true') ? 
-                            env.PROJECT_FLAVORS.split(',').collect { "test${it.capitalize()}${testVariant}UnitTest" }.join(' ') : 
-                            "test${env.SELECTED_FLAVOR.capitalize()}${testVariant}UnitTest"
+                            env.PROJECT_FLAVORS.split(',').collect { "test${it.capitalize()}DebugUnitTest" }.join(' ') : 
+                            "test${env.SELECTED_FLAVOR.capitalize()}DebugUnitTest"
                         
                         def thresholdDecimal = (env.COVERAGE_THRESHOLD.toInteger() / 100).toString()
                         sh "./gradlew ${testTasks} jacocoFullReport jacocoCoverageVerification -PcoverageThreshold=${thresholdDecimal} --no-daemon"
                     } catch (Exception e) {
-                        currentBuild.description = "Quality Gate Failed: Coverage below ${env.COVERAGE_THRESHOLD}%"
+                        currentBuild.description = "Quality Gate Failed"
                         error("Unit tests failed or coverage threshold not met.")
                     }
                 }
@@ -177,20 +168,13 @@ pipeline {
             steps {
                 script {
                     try {
-                        def testVariant = 'Debug'
                         def flavorToTest = (env.SELECTED_FLAVOR == 'all') ? 'dev' : env.SELECTED_FLAVOR
-                        sh "./gradlew connected${flavorToTest.capitalize()}${testVariant}AndroidTest --no-daemon"
+                        sh "./gradlew connected${flavorToTest.capitalize()}DebugAndroidTest --no-daemon"
                     } catch (Exception e) {
-                        currentBuild.description = "FVT Error: UI Tests Failed."
                         error("Instrumented tests failed.")
                     }
                 }
             }
-        }
-
-        stage('Gate') {
-            when { expression { env.BUILD_ALL == 'true' || env.SELECTED_FLAVOR == 'prod' } }
-            steps { echo "--- Production Readiness Gate Passed ---" }
         }
 
         stage('Build Artifacts') {
@@ -202,7 +186,6 @@ pipeline {
                             "assemble${env.SELECTED_FLAVOR.capitalize()}${env.SELECTED_VARIANT}"
                         sh "./gradlew ${tasks} --no-daemon"
                     } catch (Exception e) {
-                        currentBuild.description = "Build Error: Compilation failed."
                         error("Gradle build failed.")
                     }
                 }
@@ -234,7 +217,7 @@ pipeline {
             archiveArtifacts artifacts: '**/build/reports/jacoco/**/*.html', allowEmptyArchive: true
         }
         success {
-            script { currentBuild.description = "SUCCESS: Build complete for ${env.CURRENT_BRANCH}" }
+            script { currentBuild.description = "SUCCESS: ${env.CURRENT_BRANCH}" }
             archiveArtifacts artifacts: 'app/build/outputs/apk/**/*.apk', fingerprint: true
         }
     }
