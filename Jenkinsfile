@@ -1,5 +1,5 @@
 // =========================================================================
-// REUSABLE HELPER FUNCTIONS (Must be outside the pipeline block)
+// REUSABLE HELPER FUNCTIONS
 // =========================================================================
 def deployToFirebase(appId, flavor, buildType) {
     echo "--- Deploying ${flavor} ${buildType} to Firebase ---"
@@ -40,8 +40,9 @@ def deployToFirebase(appId, flavor, buildType) {
 pipeline {
     agent any
 
+    // Initial parameters (These will be automatically updated by the Sync stage)
     parameters {
-        choice(name: 'FLAVOR', choices: ['dev', 'prod', 'uat', 'mock', 'all'], description: 'Select flavor to build.')
+        choice(name: 'FLAVOR', choices: ['dev', 'all'], description: 'Select flavor to build.')
         choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type.')
         gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.')
         choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Tester Group.')
@@ -49,26 +50,23 @@ pipeline {
     }
 
     environment {
-        // Credential IDs (Manage Jenkins > Credentials)
         FIREBASE_TOKEN_CRED_ID = 'FIREBASE_TOKEN'
         KEYSTORE_FILE_ID       = 'RELEASE_KEYSTORE_FILE'
         KEYSTORE_PWD_ID       = 'RELEASE_KEYSTORE_PASSWORD'
         KEY_ALIAS_ID          = 'RELEASE_KEY_ALIAS'
         KEY_PWD_ID            = 'RELEASE_KEY_PASSWORD'
 
-        // Firebase App IDs
         FIREBASE_APP_ID_DEV    = "1:626304171263:android:df1dea97585db187c920ca"
         FIREBASE_APP_ID_PROD   = "1:626304171263:android:5626dce56da60590c920ca"
 
         REPO_URL = 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git'
         COVERAGE_THRESHOLD = "90"
         
-        // Resolve credentials securely
         FIREBASE_TOKEN = credentials("${env.FIREBASE_TOKEN_CRED_ID}")
     }
 
     stages {
-        stage('Initialize') {
+        stage('Initialize & Sync Flavors') {
             steps {
                 script {
                     try {
@@ -78,22 +76,35 @@ pipeline {
                             env.ANDROID_HOME = (os == 'Darwin') ? "${HOME}/Library/Android/sdk" : "/opt/android-sdk"
                         }
                         
-                        // Resolve branch
+                        // Checkout code first to read the build.gradle.kts
                         def rawBranch = params.BRANCH_TO_BUILD ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: "master"
+                        checkout([$class: 'GitSCM', branches: [[name: "${rawBranch}"]], userRemoteConfigs: [[url: "${env.REPO_URL}"]]])
+                        
+                        // DYNAMIC FLAVOR EXTRACTION
+                        def extractedFlavors = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | grep -vE 'release|debug|config' | sort -u", returnStdout: true).trim().split('\n')
+                        env.PROJECT_FLAVORS = extractedFlavors.join(',')
+                        
+                        // SELF-UPDATE JENKINS PARAMETERS
+                        // This updates the dropdown for the NEXT build
+                        properties([
+                            parameters([
+                                choice(name: 'FLAVOR', choices: extractedFlavors + ['all'], description: 'Select the Android flavor to build.'),
+                                choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type.'),
+                                gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.'),
+                                choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Tester Group.'),
+                                text(name: 'RELEASE_NOTES', defaultValue: 'New features and bug fixes.', description: 'Release notes.')
+                            ])
+                        ])
+
                         env.CURRENT_BRANCH = rawBranch.contains('/') ? rawBranch.split('/')[-1] : rawBranch
-                        
-                        // Extract flavors
-                        env.PROJECT_FLAVORS = sh(script: "grep -o 'create(\"[^\"]*\")' app/build.gradle.kts | cut -d'\"' -f2 | grep -vE 'release|debug|config' | sort -u | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
-                        
-                        env.SELECTED_FLAVOR = params.FLAVOR ?: 'dev'
+                        env.SELECTED_FLAVOR = params.FLAVOR ?: extractedFlavors[0]
                         env.SELECTED_VARIANT = params.VARIANT ?: 'Debug'
                         env.BUILD_ALL = (env.SELECTED_FLAVOR == 'all' || (params.FLAVOR == null && (env.CURRENT_BRANCH == 'master' || env.CURRENT_BRANCH == 'main'))).toString()
                         
                         echo "--- Environment Info ---"
-                        echo "OS: ${os} | Android Home: ${env.ANDROID_HOME}"
-                        echo "Branch: ${env.CURRENT_BRANCH} | Flavors: ${env.PROJECT_FLAVORS}"
+                        echo "Detected Flavors: ${env.PROJECT_FLAVORS}"
+                        echo "Selected: ${env.SELECTED_FLAVOR} | Variant: ${env.SELECTED_VARIANT}"
 
-                        checkout([$class: 'GitSCM', branches: [[name: "${rawBranch}"]], userRemoteConfigs: [[url: "${env.REPO_URL}"]]])
                         sh 'chmod +x gradlew'
                     } catch (Exception e) {
                         currentBuild.description = "Failed at Initialize: ${e.message}"
