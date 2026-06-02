@@ -71,10 +71,10 @@ pipeline {
     // =========================================================================
     parameters {
         // Initial defaults - These update automatically after the first build
-        choice(name: 'FLAVOR', choices: ['dev'].join('\n'), description: 'Select flavor to build.')
-        choice(name: 'VARIANT', choices: ['Debug', 'Release'].join('\n'), description: 'Select Build Type (Variant).')
+        choice(name: 'FLAVOR', choices: ['dev'], description: 'Select flavor to build.')
+        choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type (Variant).')
         gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch to build.')
-        choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'].join('\n'), description: 'Firebase Tester Group.')
+        choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Tester Group.')
         text(name: 'RELEASE_NOTES', defaultValue: 'Automated CI/CD build.', description: 'Notes for testers.')
     }
 
@@ -128,10 +128,10 @@ pipeline {
                         // Sync UI Parameters for the next build
                         properties([
                             parameters([
-                                choice(name: 'FLAVOR', choices: flavorList.join('\n'), description: 'Select Android flavor.'),
-                                choice(name: 'VARIANT', choices: ['Debug', 'Release'].join('\n'), description: 'Select Build Type.'),
+                                choice(name: 'FLAVOR', choices: flavorList, description: 'Select Android flavor.'),
+                                choice(name: 'VARIANT', choices: ['Debug', 'Release'], description: 'Select Build Type.'),
                                 gitParameter(name: 'BRANCH_TO_BUILD', type: 'PT_BRANCH', defaultValue: 'master', description: 'Select branch.'),
-                                choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'].join('\n'), description: 'Firebase Group.'),
+                                choice(name: 'TESTER_GROUP', choices: ['business', 'colaborator---tester'], description: 'Firebase Group.'),
                                 text(name: 'RELEASE_NOTES', defaultValue: params.RELEASE_NOTES, description: 'Notes.')
                             ])
                         ])
