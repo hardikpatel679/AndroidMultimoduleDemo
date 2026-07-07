@@ -2,7 +2,7 @@ package com.hdapp.data.di
 
 import android.content.Context
 import com.hdapp.data.BuildConfig
-import com.hdapp.data.remote.api.AuthApi
+import com.hdapp.data.remote.api.AuthApiService
 import com.hdapp.data.remote.interceptor.MockInterceptor
 import dagger.Module
 import dagger.Provides
@@ -42,7 +42,7 @@ object NetworkModule {
         val builder = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
 
-        if (BuildConfig.FLAVOR == "mock") {
+        if (BuildConfig.IS_MOCK) {
             builder.addInterceptor(mockInterceptor)
         }
 
@@ -61,7 +61,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAuthApi(retrofit: Retrofit): AuthApi {
-        return retrofit.create(AuthApi::class.java)
+    fun provideAuthApi(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
     }
 }

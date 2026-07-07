@@ -1,0 +1,7 @@
+<resources>
+    <string name="error_network" translatable="false">No internet connection. Please check your network and try again.</string>
+    <string name="error_server" translatable="false">Something went wrong on our end. Please try again later.</string>
+    <string name="error_unauthorized" translatable="false">Invalid credentials. Please try again.</string>
+    <string name="error_unknown" translatable="false">An unexpected error occurred. Please try again.</string>
+    <string name="error_empty_fields">Fields cannot be empty</string>
+</resources>

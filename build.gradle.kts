@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.kotlin.ksp) apply false
     alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.google.services) apply false
 }
 
 apply(plugin = "jacoco")
@@ -63,8 +64,15 @@ tasks.register<JacocoReport>("jacocoFullReport") {
     group = "Reporting"
     description = "Generate Jacoco coverage reports for all modules"
 
-    // Depend on all test tasks in subprojects
-    dependsOn(subprojects.flatMap { it.tasks.withType<Test>() })
+    // Depend on valid test tasks. Filter out mock/uat to avoid Google Services errors.
+    val subprojectsWithTests = subprojects.flatMap { subproject ->
+        subproject.tasks.withType<Test>().matching { task ->
+            val name = task.name.lowercase()
+            // Only include dev, prod, or generic test tasks
+            name.contains("dev") || name.contains("prod") || (!name.contains("mock") && !name.contains("uat"))
+        }
+    }
+    dependsOn(subprojectsWithTests)
 
     reports {
         xml.required.set(true)
@@ -79,24 +87,34 @@ tasks.register<JacocoReport>("jacocoFullReport") {
     }.filter { it.exists() }
     sourceDirectories.setFrom(files(sourceDirs))
 
-    // Class directories - collect from all variants to be flavor-agnostic
-    val classDirs = subprojects.map { subproject ->
-        val subProjectBuildDir = subproject.layout.buildDirectory.get().asFile
-        fileTree(subProjectBuildDir) {
-            include("**/tmp/kotlin-classes/**")
-            include("**/intermediates/javac/**/classes/**")
-            include("**/classes/kotlin/main/**")
-            exclude(fileFilter)
-        }
+    // Class directories - collect from specific locations to avoid implicit dependencies
+    val classDirs = subprojects.flatMap { subproject ->
+        val buildDir = subproject.layout.buildDirectory.get().asFile
+        val variants = listOf("devDebug", "prodDebug", "debug") // Check common variants
+        
+        variants.flatMap { variant ->
+            listOf(
+                fileTree("$buildDir/tmp/kotlin-classes/$variant") { exclude(fileFilter) },
+                fileTree("$buildDir/intermediates/javac/$variant/classes") { exclude(fileFilter) }
+            )
+        } + listOf(
+            fileTree("$buildDir/classes/kotlin/main") { exclude(fileFilter) }
+        )
     }
     classDirectories.setFrom(files(classDirs))
 
-    // Execution data - collect all .exec files found in subprojects
-    val execData = subprojects.map { subproject ->
-        fileTree(subproject.layout.buildDirectory.get().asFile) {
-            include("**/*.exec")
-        }
-    }
+    // Execution data - collect specific .exec files
+    val execData = subprojects.flatMap { subproject ->
+        val buildDir = subproject.layout.buildDirectory.get().asFile
+        val variants = listOf("devDebug", "prodDebug", "debug")
+        
+        variants.map { variant ->
+            file("$buildDir/jacoco/test${variant.replaceFirstChar { it.uppercase() }}UnitTest.exec")
+        } + listOf(
+            file("$buildDir/jacoco/test.exec")
+        )
+    }.filter { it.exists() }
+
     executionData.setFrom(files(execData))
 }
 
@@ -115,7 +133,8 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
     violationRules {
         rule {
             limit {
-                minimum = "0.80".toBigDecimal()
+                val threshold = project.findProperty("coverageThreshold")?.toString() ?: "0.90"
+                minimum = threshold.toBigDecimal()
             }
         }
     }

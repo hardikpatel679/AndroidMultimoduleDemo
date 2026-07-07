@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 configure<ApplicationExtension> {
@@ -52,6 +53,16 @@ configure<ApplicationExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            
+            // Only apply signing if properties are provided (e.g., from Jenkins)
+            if (project.hasProperty("RELEASE_STORE_FILE")) {
+                signingConfig = signingConfigs.create("release") {
+                    storeFile = file(project.property("RELEASE_STORE_FILE") as String)
+                    storePassword = project.property("RELEASE_STORE_PASSWORD") as String
+                    keyAlias = project.property("RELEASE_KEY_ALIAS") as String
+                    keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+                }
+            }
         }
     }
     compileOptions {
@@ -62,6 +73,14 @@ configure<ApplicationExtension> {
         compose = true
         buildConfig = true
     }
+}
+
+// Disable Google Services for flavors that are not configured in google-services.json
+// to avoid "No matching client found" errors during build/test.
+tasks.matching { 
+    it.name.contains("GoogleServices") && (it.name.contains("Uat") || it.name.contains("Mock")) 
+}.configureEach {
+    enabled = false
 }
 
 dependencies {
@@ -82,11 +101,13 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -97,3 +118,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.kotlinx.serialization.json)
 }
+

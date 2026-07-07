@@ -1,8 +1,9 @@
 package com.hdapp.data.repository
 
 import com.google.common.truth.Truth.assertThat
-import com.hdapp.data.remote.api.AuthApi
+import com.hdapp.data.remote.api.AuthApiService
 import com.hdapp.data.remote.model.LoginResponse
+import com.hdapp.domain.model.ApiResult
 import com.hdapp.domain.model.AppError
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -13,7 +14,7 @@ import java.io.IOException
 
 class AuthRepositoryImplTest {
 
-    private lateinit var api: AuthApi
+    private lateinit var api: AuthApiService
     private lateinit var repository: AuthRepositoryImpl
 
     @Before
@@ -39,10 +40,10 @@ class AuthRepositoryImplTest {
 
         val result = repository.login("username", "password")
 
-        assertThat(result.isSuccess).isTrue()
-        val user = result.getOrNull()
-        assertThat(user?.username).isEqualTo("test")
-        assertThat(user?.token).isEqualTo("token")
+        assertThat(result).isInstanceOf(ApiResult.Success::class.java)
+        val user = (result as ApiResult.Success).data
+        assertThat(user.username).isEqualTo("test")
+        assertThat(user.token).isEqualTo("token")
     }
 
     @Test
@@ -51,8 +52,9 @@ class AuthRepositoryImplTest {
 
         val result = repository.login("username", "password")
 
-        assertThat(result.isFailure).isTrue()
-        assertThat(result.exceptionOrNull()).isInstanceOf(AppError.NetworkError::class.java)
+        assertThat(result).isInstanceOf(ApiResult.Error::class.java)
+        val error = (result as ApiResult.Error).error
+        assertThat(error).isInstanceOf(AppError.NetworkError::class.java)
     }
 
     @Test
@@ -61,7 +63,8 @@ class AuthRepositoryImplTest {
 
         val result = repository.login("username", "password")
 
-        assertThat(result.isFailure).isTrue()
-        assertThat(result.exceptionOrNull()).isInstanceOf(AppError.UnknownError::class.java)
+        assertThat(result).isInstanceOf(ApiResult.Error::class.java)
+        val error = (result as ApiResult.Error).error
+        assertThat(error).isInstanceOf(AppError.UnknownError::class.java)
     }
 }

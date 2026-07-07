@@ -1,11 +1,14 @@
 package com.hdapp.domain.usecase
 
 import com.google.common.truth.Truth.assertThat
+import com.hdapp.domain.model.ApiResult
 import com.hdapp.domain.model.AppError
 import com.hdapp.domain.model.User
 import com.hdapp.domain.repository.AuthRepository
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -22,25 +25,9 @@ class LoginUseCaseTest {
     }
 
     @Test
-    fun `invoke with empty username returns validation error`() = runTest {
-        val result = loginUseCase("", "password")
-
-        assertThat(result.isFailure).isTrue()
-        val exception = result.exceptionOrNull()
-        assertThat(exception).isInstanceOf(AppError.BusinessError::class.java)
-        val businessError = exception as AppError.BusinessError
-        assertThat(businessError.code).isEqualTo("VALIDATION_ERROR")
-    }
-
-    @Test
-    fun `invoke with empty password returns validation error`() = runTest {
-        val result = loginUseCase("username", "")
-
-        assertThat(result.isFailure).isTrue()
-        val exception = result.exceptionOrNull()
-        assertThat(exception).isInstanceOf(AppError.BusinessError::class.java)
-        val businessError = exception as AppError.BusinessError
-        assertThat(businessError.code).isEqualTo("VALIDATION_ERROR")
+    fun `invoke starts with Loading`() = runTest {
+        val result = loginUseCase("username", "password").first()
+        assertThat(result).isInstanceOf(ApiResult.Loading::class.java)
     }
 
     @Test
@@ -56,22 +43,21 @@ class LoginUseCaseTest {
             token = "token",
             refreshToken = "refresh"
         )
-        coEvery { repository.login("username", "password") } returns Result.success(user)
+        coEvery { repository.login("username", "password") } returns ApiResult.Success(user)
 
-        val result = loginUseCase("username", "password")
+        val result = loginUseCase("username", "password").drop(1).first()
 
-        assertThat(result.isSuccess).isTrue()
-        assertThat(result.getOrNull()).isEqualTo(user)
+        assertThat(result).isInstanceOf(ApiResult.Success::class.java)
+        assertThat((result as ApiResult.Success).data).isEqualTo(user)
     }
 
     @Test
     fun `invoke when repository fails returns failure`() = runTest {
-        val error = AppError.Unauthorized
-        coEvery { repository.login("username", "password") } returns Result.failure(error)
+        coEvery { repository.login("username", "password") } returns ApiResult.Error(AppError.Unauthorized)
 
-        val result = loginUseCase("username", "password")
+        val result = loginUseCase("username", "password").drop(1).first()
 
-        assertThat(result.isFailure).isTrue()
-        assertThat(result.exceptionOrNull()).isEqualTo(error)
+        assertThat(result).isInstanceOf(ApiResult.Error::class.java)
+        assertThat((result as ApiResult.Error).error).isEqualTo(AppError.Unauthorized)
     }
 }

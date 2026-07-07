@@ -7,6 +7,7 @@ import com.google.common.truth.Truth.assertThat
 import com.hdapp.domain.model.AppLanguageConfig
 import com.hdapp.domain.model.AppThemeConfig
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -37,6 +38,12 @@ class SettingsRepositoryImplTest {
     }
 
     @Test
+    fun `setTheme updates datastore`() = runTest {
+        repository.setTheme(AppThemeConfig.DARK)
+        coVerify { dataStore.updateData(any()) }
+    }
+
+    @Test
     fun `getLanguage returns default when no value saved`() = runTest {
         val preferences = mockk<Preferences>()
         coEvery { preferences[any<Preferences.Key<*>>()] } returns null
@@ -46,5 +53,11 @@ class SettingsRepositoryImplTest {
             assertThat(awaitItem()).isEqualTo(AppLanguageConfig.ENGLISH)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `setLanguage updates datastore`() = runTest {
+        repository.setLanguage(AppLanguageConfig.ARABIC)
+        coVerify { dataStore.updateData(any()) }
     }
 }

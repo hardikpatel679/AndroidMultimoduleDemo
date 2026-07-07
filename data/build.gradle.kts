@@ -28,6 +28,7 @@ configure<LibraryExtension> {
         create("mock") {
             dimension = "environment"
             buildConfigField("String", "BASE_URL", "\"https://dummyjson.com/\"")
+            buildConfigField("Boolean", "IS_MOCK", "true")
         }
         create("prod") {
             dimension = "environment"
@@ -56,4 +57,9 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidxTestRunner)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.truth)
 }

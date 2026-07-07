@@ -2,10 +2,10 @@ package com.hdapp.feature.login.mvi
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hdapp.core.ui.util.UiText
+import com.hdapp.core.ui.util.toUiText
+import com.hdapp.domain.model.ApiResult
 import com.hdapp.domain.model.AppError
 import com.hdapp.domain.usecase.LoginUseCase
-import com.hdapp.feature.login.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,33 +44,32 @@ class LoginViewModel @Inject constructor(
         val currentState = _state.value
         if (currentState.isLoading) return
 
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            
-            loginUseCase(currentState.username, currentState.password)
-                .onSuccess { user ->
-                    _state.update { it.copy(isLoading = false, user = user) }
-                    _effect.emit(LoginEffect.NavigateToDashboard)
-                }
-                .onFailure { throwable ->
-                    _state.update { it.copy(isLoading = false, error = mapErrorToUiText(throwable)) }
-                }
+        if (currentState.username.isBlank() || currentState.password.isBlank()) {
+            _state.update { it.copy(error = AppError.ValidationError.toUiText()) }
+            return
         }
-    }
 
-    private fun mapErrorToUiText(throwable: Throwable): UiText {
-        return when (throwable) {
-            is AppError.NetworkError -> UiText.StringResource(R.string.error_network)
-            is AppError.ServerError -> UiText.StringResource(R.string.error_server)
-            is AppError.Unauthorized -> UiText.StringResource(R.string.error_unauthorized)
-            is AppError.BusinessError -> {
-                if (throwable.code == "VALIDATION_ERROR") {
-                    UiText.StringResource(R.string.error_empty_fields)
-                } else {
-                    UiText.DynamicString(throwable.message)
+        viewModelScope.launch {
+            loginUseCase(currentState.username, currentState.password)
+                .collect { result ->
+                    when (result) {
+                        is ApiResult.Loading -> {
+                            _state.update { it.copy(isLoading = true, error = null) }
+                        }
+                        is ApiResult.Success -> {
+                            _state.update { it.copy(isLoading = false, user = result.data) }
+                            _effect.emit(LoginEffect.NavigateToDashboard)
+                        }
+                        is ApiResult.Error -> {
+                            _state.update { 
+                                it.copy(
+                                    isLoading = false, 
+                                    error = result.error.toUiText()
+                                ) 
+                            }
+                        }
+                    }
                 }
-            }
-            else -> UiText.StringResource(R.string.error_unknown)
         }
     }
 }
