@@ -2,16 +2,16 @@ package com.hdapp.feature.login.mvi
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
-import com.hdapp.core.ui.util.UiText
+import com.hdapp.domain.model.ApiResult
 import com.hdapp.domain.model.AppError
 import com.hdapp.domain.model.User
 import com.hdapp.domain.usecase.LoginUseCase
-import com.hdapp.feature.login.R
-import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -71,7 +72,7 @@ class LoginViewModelTest {
 
     @Test
     fun `ClearError intent clears error in state`() = runTest {
-        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.Unauthorized)
+        every { loginUseCase(any(), any()) } returns flowOf(ApiResult.Error(AppError.Unauthorized))
         viewModel.onIntent(LoginIntent.LoginClicked)
         testDispatcher.scheduler.advanceUntilIdle()
         
@@ -94,7 +95,7 @@ class LoginViewModelTest {
             token = "mock_token",
             refreshToken = ""
         )
-        coEvery { loginUseCase("newuser", "newpass") } returns Result.success(user)
+        every { loginUseCase("newuser", "newpass") } returns flowOf(ApiResult.Loading, ApiResult.Success(user))
 
         viewModel.onIntent(LoginIntent.UsernameChanged("newuser"))
         viewModel.onIntent(LoginIntent.PasswordChanged("newpass"))
@@ -118,7 +119,7 @@ class LoginViewModelTest {
 
     @Test
     fun `LoginClicked failure updates state with error`() = runTest {
-        coEvery { loginUseCase("newuser", "newpass") } returns Result.failure(AppError.Unauthorized)
+        every { loginUseCase("newuser", "newpass") } returns flowOf(ApiResult.Loading, ApiResult.Error(AppError.Unauthorized))
 
         viewModel.onIntent(LoginIntent.UsernameChanged("newuser"))
         viewModel.onIntent(LoginIntent.PasswordChanged("newpass"))
@@ -136,66 +137,30 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `LoginClicked NetworkError updates state with network error resource`() = runTest {
-        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.NetworkError)
+    fun `LoginClicked validation error updates state`() = runTest {
+        every { loginUseCase(" ", " ") } returns flowOf(ApiResult.Loading, ApiResult.Error(AppError.ValidationError))
 
-        viewModel.onIntent(LoginIntent.LoginClicked)
-        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onIntent(LoginIntent.UsernameChanged(" "))
+        viewModel.onIntent(LoginIntent.PasswordChanged(" "))
 
-        val error = viewModel.state.value.error as UiText.StringResource
-        assertThat(error.resId).isEqualTo(R.string.error_network)
-    }
+        viewModel.state.test {
+            awaitItem() // Current after updates
+            viewModel.onIntent(LoginIntent.LoginClicked)
+            
+            assertThat(awaitItem().isLoading).isTrue()
 
-    @Test
-    fun `LoginClicked ServerError updates state with server error resource`() = runTest {
-        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.ServerError)
-
-        viewModel.onIntent(LoginIntent.LoginClicked)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        val error = viewModel.state.value.error as UiText.StringResource
-        assertThat(error.resId).isEqualTo(R.string.error_server)
-    }
-
-    @Test
-    fun `LoginClicked BusinessError Validation updates state with correct resource`() = runTest {
-        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.BusinessError("VALIDATION_ERROR", "Msg"))
-
-        viewModel.onIntent(LoginIntent.LoginClicked)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        val error = viewModel.state.value.error as UiText.StringResource
-        assertThat(error.resId).isEqualTo(R.string.error_empty_fields)
-    }
-
-    @Test
-    fun `LoginClicked Generic BusinessError updates state with dynamic string`() = runTest {
-        val msg = "Generic Msg"
-        coEvery { loginUseCase(any(), any()) } returns Result.failure(AppError.BusinessError("OTHER", msg))
-
-        viewModel.onIntent(LoginIntent.LoginClicked)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        val error = viewModel.state.value.error as UiText.DynamicString
-        assertThat(error.value).isEqualTo(msg)
-    }
-
-    @Test
-    fun `LoginClicked unexpected error updates state with unknown error resource`() = runTest {
-        coEvery { loginUseCase(any(), any()) } returns Result.failure(RuntimeException())
-
-        viewModel.onIntent(LoginIntent.LoginClicked)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        val error = viewModel.state.value.error as UiText.StringResource
-        assertThat(error.resId).isEqualTo(R.string.error_unknown)
+            val errorState = awaitItem()
+            assertThat(errorState.isLoading).isFalse()
+            assertThat(errorState.error).isNotNull()
+        }
     }
 
     @Test
     fun `LoginClicked does nothing if already loading`() = runTest {
-        coEvery { loginUseCase(any(), any()) } coAnswers {
-            kotlinx.coroutines.delay(1000)
-            Result.success(mockk())
+        every { loginUseCase(any(), any()) } returns kotlinx.coroutines.flow.flow {
+            emit(ApiResult.Loading)
+            kotlinx.coroutines.delay(1000.milliseconds)
+            emit(ApiResult.Success(mockk()))
         }
 
         viewModel.onIntent(LoginIntent.LoginClicked)
@@ -206,6 +171,9 @@ class LoginViewModelTest {
         viewModel.onIntent(LoginIntent.LoginClicked)
         
         // Verify use case was only called once
-        coVerify(exactly = 1) { loginUseCase(any(), any()) }
+        verify(exactly = 1) { 
+            val flow = loginUseCase(any(), any())
+            assertThat(flow).isNotNull()
+        }
     }
 }

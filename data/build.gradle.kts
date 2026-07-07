@@ -28,6 +28,7 @@ configure<LibraryExtension> {
         create("mock") {
             dimension = "environment"
             buildConfigField("String", "BASE_URL", "\"https://dummyjson.com/\"")
+            buildConfigField("Boolean", "IS_MOCK", "true")
         }
         create("prod") {
             dimension = "environment"

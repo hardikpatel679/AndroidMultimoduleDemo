@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import com.hdapp.core.ui.util.UiText
 import com.hdapp.domain.model.User
 
+
+// The event which is go from view to view model which is called intnet
 sealed class LoginIntent {
     data class UsernameChanged(val username: String) : LoginIntent()
     data class PasswordChanged(val password: String) : LoginIntent()
@@ -22,6 +24,7 @@ data class LoginState(
     val user: User? = null
 )
 
+// Note : the event which is go from viewmodel to view is called effect
 sealed class LoginEffect {
     data class ShowToast(val message: String) : LoginEffect()
     object NavigateToDashboard : LoginEffect()

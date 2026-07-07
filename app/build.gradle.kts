@@ -101,11 +101,13 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -116,3 +118,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.kotlinx.serialization.json)
 }
+
