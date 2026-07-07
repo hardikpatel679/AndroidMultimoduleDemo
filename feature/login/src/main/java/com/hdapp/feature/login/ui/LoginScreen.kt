@@ -1,5 +1,6 @@
 package com.hdapp.feature.login.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,7 @@ import com.hdapp.feature.login.mvi.LoginEffect
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.tooling.preview.Preview
 import com.hdapp.core.ui.theme.AppTheme
+import com.hdapp.core.ui.theme.Dimens
 
 @Composable
 fun LoginScreen(
@@ -39,6 +42,7 @@ fun LoginScreen(
     onNavigateToDashboard: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     
     // Stable lambda for navigating
     val navigateAction = remember(onNavigateToDashboard) {
@@ -53,12 +57,11 @@ fun LoginScreen(
                     navigateAction(state.username)
                 }
                 is LoginEffect.ShowToast -> {
-                    // Handle toast if needed
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
-
     // Stable intent handler
     val onIntent: (LoginIntent) -> Unit = remember(viewModel) {
         { intent -> viewModel.onIntent(intent) }
@@ -76,7 +79,7 @@ fun LoginContent(
     onIntent: (LoginIntent) -> Unit
 ) {
     val dimens = LocalDimens.current
-    
+
     val onUsernameChange = remember(onIntent) {
         { value: String -> onIntent(LoginIntent.UsernameChanged(value)) }
     }
@@ -131,7 +134,7 @@ fun LoginContent(
 }
 
 @Composable
-private fun LoginHeader(dimens: com.hdapp.core.ui.theme.Dimens) {
+private fun LoginHeader(dimens: Dimens) {
     Text(
         text = stringResource(R.string.login_welcome_back),
         style = MaterialTheme.typography.headlineLarge,
@@ -155,7 +158,7 @@ private fun LoginInputs(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onToggleVisibility: () -> Unit,
-    dimens: com.hdapp.core.ui.theme.Dimens
+    dimens: Dimens
 ) {
     AppTextField(
         value = username,
@@ -192,7 +195,7 @@ private fun LoginInputs(
 private fun LoginActions(
     isLoading: Boolean,
     onLoginClick: () -> Unit,
-    dimens: com.hdapp.core.ui.theme.Dimens
+    dimens: Dimens
 ) {
     TextButton(
         onClick = { },
@@ -216,7 +219,7 @@ private fun LoginActions(
 }
 
 @Composable
-private fun LoginSocialSection(dimens: com.hdapp.core.ui.theme.Dimens) {
+private fun LoginSocialSection(dimens: Dimens) {
     Spacer(modifier = Modifier.height(dimens.large))
 
     Row(
@@ -253,7 +256,7 @@ private fun LoginSocialSection(dimens: com.hdapp.core.ui.theme.Dimens) {
 }
 
 @Composable
-private fun LoginFooter(dimens: com.hdapp.core.ui.theme.Dimens) {
+private fun LoginFooter(dimens: Dimens) {
     Spacer(modifier = Modifier.height(dimens.extraLarge))
 
     Row(

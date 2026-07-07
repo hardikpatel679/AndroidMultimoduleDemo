@@ -1,16 +1,18 @@
 package com.hdapp.androidmultimodule.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.hdapp.core.ui.theme.SettingsViewModel
 import com.hdapp.domain.navigation.Screen
 import com.hdapp.feature.login.mvi.LoginViewModel
 import com.hdapp.feature.login.ui.DashboardScreen
 import com.hdapp.feature.login.ui.LoginScreen
 import com.hdapp.feature.login.ui.SettingsScreen
-import com.hdapp.core.ui.theme.SettingsViewModel
 
 @Composable
 fun AppNavGraph() {
@@ -23,6 +25,10 @@ fun AppNavGraph() {
                 backStack.removeAt(backStack.size - 1) 
             }
         },
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator()
+        ),
         entryProvider = { key ->
             when (val screen = key as Screen) {
                 is Screen.Login -> {

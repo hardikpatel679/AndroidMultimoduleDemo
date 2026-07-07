@@ -69,14 +69,14 @@ pipeline {
     // SERVER CONFIGURATION
     // =========================================================================
     environment {
-        FIREBASE_TOKEN_CRED_ID = 'FIREBASE_TOKEN' 
-        KEYSTORE_FILE_ID       = 'RELEASE_KEYSTORE_FILE' 
-        KEYSTORE_PWD_ID       = 'RELEASE_KEYSTORE_PASSWORD' 
-        KEY_ALIAS_ID          = 'RELEASE_KEY_ALIAS' 
-        KEY_PWD_ID            = 'RELEASE_KEY_PASSWORD' 
+        FIREBASE_TOKEN_CRED_ID  = 'FIREBASE_TOKEN'
+        KEYSTORE_FILE_ID        = 'RELEASE_KEYSTORE_FILE'
+        KEYSTORE_PWD_ID         = 'RELEASE_KEYSTORE_PASSWORD'
+        KEY_ALIAS_ID            = 'RELEASE_KEY_ALIAS'
+        KEY_PWD_ID              = 'RELEASE_KEY_PASSWORD'
 
-        FIREBASE_APP_ID_DEV    = "1:626304171263:android:df1dea97585db187c920ca"
-        FIREBASE_APP_ID_PROD   = "1:626304171263:android:5626dce56da60590c920ca"
+        FIREBASE_APP_ID_DEV     = "1:626304171263:android:df1dea97585db187c920ca"
+        FIREBASE_APP_ID_PROD    = "1:626304171263:android:5626dce56da60590c920ca"
 
         REPO_URL = 'https://github.com/hardikpatel679/AndroidMultimoduleDemo.git'
         COVERAGE_THRESHOLD = "90"
@@ -156,7 +156,7 @@ pipeline {
                         
                         def thresholdDecimal = (env.COVERAGE_THRESHOLD.toInteger() / 100).toString()
                         sh "./gradlew ${testTasks} jacocoFullReport jacocoCoverageVerification -PcoverageThreshold=${thresholdDecimal} --no-daemon"
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                         currentBuild.description = "Quality Gate Failed"
                         error("Unit tests failed or coverage threshold not met.")
                     }
@@ -170,7 +170,7 @@ pipeline {
                     try {
                         def flavorToTest = (env.SELECTED_FLAVOR == 'all') ? 'dev' : env.SELECTED_FLAVOR
                         sh "./gradlew connected${flavorToTest.capitalize()}DebugAndroidTest --no-daemon"
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                         error("Instrumented tests failed.")
                     }
                 }
@@ -185,7 +185,7 @@ pipeline {
                             env.PROJECT_FLAVORS.split(',').collect { "assemble${it.capitalize()}${env.SELECTED_VARIANT}" }.join(' ') : 
                             "assemble${env.SELECTED_FLAVOR.capitalize()}${env.SELECTED_VARIANT}"
                         sh "./gradlew ${tasks} --no-daemon"
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                         error("Gradle build failed.")
                     }
                 }

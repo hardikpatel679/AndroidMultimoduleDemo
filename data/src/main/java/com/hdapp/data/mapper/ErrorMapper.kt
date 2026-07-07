@@ -7,8 +7,8 @@ import java.net.SocketTimeoutException
 
 fun Throwable.toAppError(): AppError {
     return when (this) {
-        is IOException -> AppError.NetworkError
         is SocketTimeoutException -> AppError.NetworkError
+        is IOException -> AppError.NetworkError
         is HttpException -> {
             when (code()) {
                 401 -> AppError.Unauthorized
@@ -16,7 +16,6 @@ fun Throwable.toAppError(): AppError {
                 else -> AppError.UnknownError(this)
             }
         }
-        is AppError -> this
         else -> AppError.UnknownError(this)
     }
 }
